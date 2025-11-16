@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String?
+  email     String?  @unique
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sales     Sale[]
+
+  Invoice Invoice[]
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model Product {
+  id                Int     @id @default(autoincrement())
+  name              String
+  sku               String?
+  price             Float   @default(0)
+  lowStockThreshold Int     @default(5)
+
+  quantity    Int        @default(0)
+  description String?
+  categoryId  Int
+  category    Category   @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  purchases   Purchase[]
+  sales       Sale[]
+
+  InvoiceItem      InvoiceItem[]
+  stockAdjustments StockAdjustment[]
+}
+
+model Supplier {
+  id        Int        @id @default(autoincrement())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  purchases Purchase[]
+}
+
+model Purchase {
+  id           Int      @id @default(autoincrement())
+  productId    Int
+  supplierId   Int?
+  quantity     Int
+  pricePerUnit Float    @default(0)
+  totalAmount  Float    @default(0)
+  remarks      String?
+  date         DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  product  Product   @relation(fields: [productId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+}
+
+model Sale {
+  id           Int      @id @default(autoincrement())
+  productId    Int
+  customerId   Int?
+  quantity     Int
+  pricePerUnit Float    @default(0)
+  totalAmount  Float    @default(0)
+  remarks      String?
+  rate         Float
+  date         DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  product  Product   @relation(fields: [productId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+}
+
+
+model Invoice {
+  id            Int      @id @default(autoincrement())
+  invoiceNumber String   @unique
+  customerId    Int?
+  date          DateTime @default(now())
+
+  subtotal Float @default(0)
+  discount Float @default(0)
+
+  // GST fields
+  cgstPercent Float @default(0)
+  cgstAmount  Float @default(0)
+  sgstPercent Float @default(0)
+  sgstAmount  Float @default(0)
+  igstPercent Float @default(0)
+  igstAmount  Float @default(0)
+
+  total     Float    @default(0)
+  remarks   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer?     @relation(fields: [customerId], references: [id])
+  items    InvoiceItem[]
+}
+
+model InvoiceItem {
+  id           Int   @id @default(autoincrement())
+  invoiceId    Int
+  productId    Int
+  quantity     Int
+  pricePerUnit Float
+  total        Float
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Settings {
+  id              Int      @id @default(autoincrement())
+  businessName    String   @default("My Business")
+  phone           String?
+  addressLine1    String?
+  addressLine2    String?
+  gstin           String?
+  invoiceFooter   String?
+  defaultLowStock Int      @default(5)
+  updatedAt       DateTime @updatedAt
+}
+
+model StockAdjustment {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  quantity  Int
+  type      String // damaged / expired / lost / manual
+  note      String?
+  date      DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model ExpenseCategory {
+  id        Int       @id @default(autoincrement())
+  name      String
+  expenses  Expense[]
+}
+
+model Expense {
+  id          Int              @id @default(autoincrement())
+  title       String
+  amount      Float
+  date        DateTime         @default(now())
+  notes       String?
+  categoryId  Int
+  category    ExpenseCategory  @relation(fields: [categoryId], references: [id])
+}
