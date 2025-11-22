@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 
 export default function SalesModule() {
   const [list, setList] = useState([]);
@@ -14,25 +14,26 @@ export default function SalesModule() {
     customerId: "",
     quantity: 0,
     rate: 0,
-    pricePerUnit: 0,
     totalAmount: 0,
     remarks: "",
     date: "",
+  });
+
+  const [errors, setErrors] = useState({
+    rateWarning: "",
+    stockError: "",
   });
 
   const API = "/api/sales";
 
   const load = async () => {
     setLoading(true);
-
     const s = await fetch(API).then((r) => r.json());
     const p = await fetch("/api/products").then((r) => r.json());
     const c = await fetch("/api/customers").then((r) => r.json());
-
     setList(s);
     setProducts(p);
     setCustomers(c);
-
     setLoading(false);
   };
 
@@ -44,27 +45,53 @@ export default function SalesModule() {
   useEffect(() => {
     const qty = Number(form.quantity);
     const rate = Number(form.rate);
+
     setForm((prev) => ({
       ...prev,
       totalAmount: qty * rate,
-      pricePerUnit: rate, // keep both same due to your schema choice
     }));
   }, [form.quantity, form.rate]);
 
-  // When product changes → auto-fill rate = product.price
+  // When product changes → auto-fill selling rate = product price
   useEffect(() => {
     if (!form.productId) return;
-
     const product = products.find((p) => p.id === Number(form.productId));
     if (product) {
       setForm((prev) => ({
         ...prev,
         rate: product.price,
-        pricePerUnit: product.price,
       }));
     }
-  }, [form.productId, products]);
+  }, [form.productId]);
 
+  // ---------------------------
+  // VALIDATION LOGIC
+  // ---------------------------
+  const currentProduct = useMemo(() => {
+    return products.find((p) => p.id === Number(form.productId));
+  }, [products, form.productId]);
+
+  useEffect(() => {
+    let warnings = { rateWarning: "", stockError: "" };
+
+    if (currentProduct) {
+      // selling below cost warning
+      if (Number(form.rate) < Number(currentProduct.price)) {
+        warnings.rateWarning = `Warning: Selling below cost price (₹${currentProduct.price})`;
+      }
+
+      // stock check
+      if (Number(form.quantity) > Number(currentProduct.quantity)) {
+        warnings.stockError = `Only ${currentProduct.quantity} qty available in stock`;
+      }
+    }
+
+    setErrors(warnings);
+  }, [form.rate, form.quantity, currentProduct]);
+
+  // ---------------------------
+  // MODAL OPEN / CLOSE
+  // ---------------------------
   const open = (type, item = null) => {
     setModal(type);
     setSelected(item);
@@ -75,10 +102,9 @@ export default function SalesModule() {
         customerId: item.customerId || "",
         quantity: item.quantity,
         rate: item.rate,
-        pricePerUnit: item.pricePerUnit,
         totalAmount: item.totalAmount,
         remarks: item.remarks || "",
-        date: item.date ? item.date.split("T")[0] : "",
+        date: item.date?.split("T")[0] || "",
       });
     } else {
       setForm({
@@ -86,7 +112,6 @@ export default function SalesModule() {
         customerId: "",
         quantity: 0,
         rate: 0,
-        pricePerUnit: 0,
         totalAmount: 0,
         remarks: "",
         date: new Date().toISOString().slice(0, 10),
@@ -97,21 +122,18 @@ export default function SalesModule() {
   const close = () => {
     setModal(null);
     setSelected(null);
+    setErrors({ rateWarning: "", stockError: "" });
   };
 
+  // ---------------------------
+  // ACTIONS
+  // ---------------------------
   const createItem = async () => {
     await fetch(API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        quantity: Number(form.quantity),
-        rate: Number(form.rate),
-        pricePerUnit: Number(form.rate),
-        totalAmount: Number(form.totalAmount),
-      }),
+      body: JSON.stringify({ ...form }),
     });
-
     close();
     load();
   };
@@ -120,15 +142,8 @@ export default function SalesModule() {
     await fetch(`${API}/${selected.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        quantity: Number(form.quantity),
-        rate: Number(form.rate),
-        pricePerUnit: Number(form.rate),
-        totalAmount: Number(form.totalAmount),
-      }),
+      body: JSON.stringify({ ...form }),
     });
-
     close();
     load();
   };
@@ -139,6 +154,18 @@ export default function SalesModule() {
     load();
   };
 
+  const saveDisabled =
+    errors.stockError !== "" ||
+    errors.rateWarning !== "" ||
+    !form.productId ||
+    !form.customerId ||
+    form.quantity <= 0 ||
+    form.rate <= 0 ||
+    !form.date;
+
+  // ---------------------------
+  // MAIN UI
+  // ---------------------------
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, marginBottom: 15 }}>Sales</h1>
@@ -150,9 +177,8 @@ export default function SalesModule() {
         Add Sale
       </button>
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
+      {/* TABLE */}
+      {!loading ? (
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f3f3f3" }}>
@@ -179,10 +205,10 @@ export default function SalesModule() {
                   {s.quantity}
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
-                  {s.rate}
+                  ₹{s.rate}
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
-                  {s.totalAmount}
+                  ₹{s.totalAmount}
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   {new Date(s.date).toLocaleDateString()}
@@ -200,6 +226,8 @@ export default function SalesModule() {
             ))}
           </tbody>
         </table>
+      ) : (
+        <p>Loading...</p>
       )}
 
       {/* MODAL */}
@@ -212,6 +240,7 @@ export default function SalesModule() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            zIndex: 9999,
           }}
         >
           <div
@@ -220,13 +249,16 @@ export default function SalesModule() {
               padding: 20,
               borderRadius: 8,
               width: "100%",
-              maxWidth: 500,
+              maxWidth: 520,
             }}
           >
             {(modal === "add" || modal === "edit") && (
               <>
-                <h2>{modal === "add" ? "Add Sale" : "Edit Sale"}</h2>
+                <h2 style={{ marginBottom: 12 }}>
+                  {modal === "add" ? "Add Sale" : "Edit Sale"}
+                </h2>
 
+                {/* PRODUCT */}
                 <select
                   value={form.productId}
                   onChange={(e) =>
@@ -237,11 +269,12 @@ export default function SalesModule() {
                   <option value="">Select Product</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name}
+                      {p.name} (Stock: {p.quantity})
                     </option>
                   ))}
                 </select>
 
+                {/* CUSTOMER */}
                 <select
                   value={form.customerId}
                   onChange={(e) =>
@@ -257,6 +290,7 @@ export default function SalesModule() {
                   ))}
                 </select>
 
+                {/* QUANTITY */}
                 <input
                   type="number"
                   placeholder="Quantity"
@@ -264,9 +298,16 @@ export default function SalesModule() {
                   onChange={(e) =>
                     setForm({ ...form, quantity: Number(e.target.value) })
                   }
-                  style={{ padding: 8, width: "100%", marginBottom: 10 }}
+                  style={{ padding: 8, width: "100%", marginBottom: 5 }}
                 />
 
+                {errors.stockError && (
+                  <p style={{ color: "red", marginBottom: 10 }}>
+                    {errors.stockError}
+                  </p>
+                )}
+
+                {/* RATE */}
                 <input
                   type="number"
                   placeholder="Selling Rate"
@@ -274,22 +315,29 @@ export default function SalesModule() {
                   onChange={(e) =>
                     setForm({ ...form, rate: Number(e.target.value) })
                   }
-                  style={{ padding: 8, width: "100%", marginBottom: 10 }}
+                  style={{ padding: 8, width: "100%", marginBottom: 5 }}
                 />
 
+                {errors.rateWarning && (
+                  <p style={{ color: "orange", marginBottom: 10 }}>
+                    ⚠ {errors.rateWarning}
+                  </p>
+                )}
+
+                {/* TOTAL */}
                 <input
                   type="number"
-                  placeholder="Total Amount"
                   value={form.totalAmount}
                   readOnly
                   style={{
                     padding: 8,
                     width: "100%",
                     marginBottom: 10,
-                    background: "#eee",
+                    background: "#f2f2f2",
                   }}
                 />
 
+                {/* DATE */}
                 <input
                   type="date"
                   value={form.date}
@@ -297,6 +345,7 @@ export default function SalesModule() {
                   style={{ padding: 8, width: "100%", marginBottom: 10 }}
                 />
 
+                {/* REMARKS */}
                 <textarea
                   placeholder="Remarks"
                   value={form.remarks}
@@ -306,6 +355,7 @@ export default function SalesModule() {
                   style={{ padding: 8, width: "100%", marginBottom: 10 }}
                 />
 
+                {/* BUTTONS */}
                 <div
                   style={{
                     display: "flex",
@@ -314,7 +364,18 @@ export default function SalesModule() {
                   }}
                 >
                   <button onClick={close}>Cancel</button>
-                  <button onClick={modal === "add" ? createItem : updateItem}>
+                  <button
+                    disabled={saveDisabled}
+                    style={{
+                      background: saveDisabled ? "#999" : "#2563eb",
+                      color: "white",
+                      padding: "8px 16px",
+                      borderRadius: 6,
+                      border: "none",
+                      cursor: saveDisabled ? "not-allowed" : "pointer",
+                    }}
+                    onClick={modal === "add" ? createItem : updateItem}
+                  >
                     Save
                   </button>
                 </div>

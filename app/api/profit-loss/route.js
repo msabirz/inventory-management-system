@@ -19,12 +19,10 @@ function startEndForRange(range) {
       break;
 
     case "this_week":
-    case "thisweek":
     case "week":
-      // week starting Monday
       {
-        const day = start.getDay(); // 0 (Sun) - 6
-        const diffToMonday = (day + 6) % 7; // how many days since Monday
+        const day = start.getDay();
+        const diffToMonday = (day + 6) % 7;
         start.setDate(start.getDate() - diffToMonday);
         start.setHours(0, 0, 0, 0);
         end.setDate(start.getDate() + 6);
@@ -33,11 +31,9 @@ function startEndForRange(range) {
       break;
 
     case "last_week":
-    case "lastweek":
       {
         const day = start.getDay();
         const diffToMonday = (day + 6) % 7;
-        // go to monday this week, then subtract 7 days
         start.setDate(start.getDate() - diffToMonday - 7);
         start.setHours(0, 0, 0, 0);
         end.setDate(start.getDate() + 6);
@@ -46,10 +42,9 @@ function startEndForRange(range) {
       break;
 
     case "this_month":
-    case "month":
       start.setDate(1);
       start.setHours(0, 0, 0, 0);
-      end.setMonth(start.getMonth() + 1, 0); // last day of month
+      end.setMonth(start.getMonth() + 1, 0);
       end.setHours(23, 59, 59, 999);
       break;
 
@@ -62,18 +57,16 @@ function startEndForRange(range) {
 
     case "financial_year":
     case "fy":
-      // assume FY Apr 1 -> Mar 31 (India). If you use different, change here.
       {
         const year = now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
-        start.setFullYear(year, 3, 1); // April 1
-        start.setHours(0,0,0,0);
-        end.setFullYear(year + 1, 2, 31); // Mar 31 next year
-        end.setHours(23,59,59,999);
+        start.setFullYear(year, 3, 1);
+        start.setHours(0, 0, 0, 0);
+        end.setFullYear(year + 1, 2, 31);
+        end.setHours(23, 59, 59, 999);
       }
       break;
 
     default:
-      // default -> this week
       return startEndForRange("this_week");
   }
 
@@ -83,65 +76,72 @@ function startEndForRange(range) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    // Accept either { range: 'this_week' } or { from, to } (YYYY-MM-DD)
     const { range, from, to } = body || {};
 
     let startDate, endDate;
+
     if (from && to) {
       startDate = new Date(from + "T00:00:00");
       endDate = new Date(to + "T23:59:59");
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        return NextResponse.json({ error: "Invalid from/to dates" }, { status: 400 });
-      }
     } else {
       const rez = startEndForRange(range || "this_week");
       startDate = rez.start;
       endDate = rez.end;
     }
 
-    // Fetch sales in range, include product for purchasePrice
     const sales = await prisma.sale.findMany({
-      where: {
-        date: { gte: startDate, lte: endDate },
-      },
+      where: { date: { gte: startDate, lte: endDate } },
       include: { product: true },
     });
 
-    let totalSales = 0;
-    let totalCOGS = 0;
+    let revenue = 0;
+    let cogs = 0;
+    let normalProfit = 0;
 
     for (const s of sales) {
-      const q = safeNumber(s.quantity);
-      const r = safeNumber(s.rate); // rate is selling price
-      totalSales += q * r;
+      const qty = safeNumber(s.quantity);
+      const sp = safeNumber(s.rate);
+      const cp = safeNumber(s.product?.price);
 
-      // product may be null if relation broken, protect
-      const purchasePrice = safeNumber(s.product?.purchasePrice);
-      totalCOGS += q * purchasePrice;
+      revenue += qty * sp;
+      cogs += qty * cp;
+      normalProfit += (sp - cp) * qty;
     }
 
-    // Expenses in range
     const expensesAgg = await prisma.expense.aggregate({
       _sum: { amount: true },
       where: { date: { gte: startDate, lte: endDate } },
     });
-    const totalExpenses = safeNumber(expensesAgg._sum.amount || 0);
 
-    const grossProfit = totalSales - totalCOGS;
-    const netProfit = grossProfit - totalExpenses;
+    const expenses = safeNumber(expensesAgg._sum.amount || 0);
+
+    const grossProfit = revenue - cogs;
+    const netProfit = grossProfit - expenses;
 
     return NextResponse.json({
       range: range || "this_week",
       from: startDate.toISOString(),
       to: endDate.toISOString(),
-      totalSales: safeNumber(totalSales),
-      totalCOGS: safeNumber(totalCOGS),
-      grossProfit: safeNumber(grossProfit),
-      totalExpenses: safeNumber(totalExpenses),
-      netProfit: safeNumber(netProfit),
+
+      revenue,
+      cogs,
+      grossProfit,
+      expenses,
+      netProfit,
+
+      normalProfit, // NEW CARD
+
+      tooltips: {
+        revenue: "Revenue = Σ (Selling Price × Quantity)",
+        cogs: "COGS = Σ (Cost Price × Quantity)",
+        grossProfit: "Gross Profit = Revenue – COGS",
+        expenses: "Expenses = Σ expense amounts",
+        netProfit: "Net Profit = Gross Profit – Expenses",
+        normalProfit: "Normal Profit = Σ (Selling Price – Cost Price) × Qty"
+      }
     });
   } catch (err) {
-    console.error("P&L POST ERROR:", err);
+    console.error("P&L Error", err);
     return NextResponse.json({ error: "Failed to calculate P&L" }, { status: 500 });
   }
 }

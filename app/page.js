@@ -34,6 +34,8 @@ export default function DashboardPage() {
         <h2>Quick Actions</h2>
 
         <div style={{ display: "flex", gap: 15, marginTop: 15 }}>
+           <QuickLink href="/purchases" label="Create Purchase" />
+          <QuickLink href="/sales" label="Create Sale" />
           <QuickLink href="/invoices/create" label="Create Invoice" />
           <QuickLink href="/products" label="Manage Products" />
           <QuickLink href="/reports" label="Reports" />

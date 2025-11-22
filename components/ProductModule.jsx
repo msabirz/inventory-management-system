@@ -132,6 +132,9 @@ export default function ProductModule() {
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Price</th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Qty</th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Category</th>
+              <th style={{ padding: 8, border: "1px solid #ddd" }}>
+                Description
+              </th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Actions</th>
             </tr>
           </thead>
@@ -153,6 +156,9 @@ export default function ProductModule() {
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   {p.category?.name}
+                </td>
+                <td style={{ padding: 8, border: "1px solid #ddd" }}>
+                  {p.description}
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   <button
