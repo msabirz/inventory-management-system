@@ -146,6 +146,42 @@ export default function InvoiceDetailPage({ params }) {
       >
         🖨 Print Invoice
       </a>
+            <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
+        <a
+          href={`/invoices/${id}/edit`}
+          style={{
+            background: "#2563eb",
+            color: "white",
+            padding: "8px 14px",
+            borderRadius: 6,
+            textDecoration: "none",
+            fontSize: 14,
+          }}
+        >
+          ✏️ Edit
+        </a>
+
+        <button
+          onClick={async () => {
+            const ok = confirm("Delete this invoice?");
+            if (!ok) return;
+            await fetch(`/api/invoices/${id}`, { method: "DELETE" });
+            window.location.href = "/invoices";
+          }}
+          style={{
+            background: "crimson",
+            color: "white",
+            padding: "8px 14px",
+            borderRadius: 6,
+            border: "none",
+            fontSize: 14,
+            cursor: "pointer",
+          }}
+        >
+          🗑 Delete
+        </button>
+      </div>
+
     </div>
   );
 }

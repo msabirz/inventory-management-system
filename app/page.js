@@ -36,7 +36,7 @@ export default function DashboardPage() {
         <div style={{ display: "flex", gap: 15, marginTop: 15 }}>
            <QuickLink href="/purchases" label="Create Purchase" />
           <QuickLink href="/sales" label="Create Sale" />
-          <QuickLink href="/invoices/create" label="Create Invoice" />
+          <QuickLink href="/invoices/create" label="Create Quotation" />
           <QuickLink href="/products" label="Manage Products" />
           <QuickLink href="/reports" label="Reports" />
           <QuickLink href="/low-stock" label="Low Stock" />
@@ -45,7 +45,7 @@ export default function DashboardPage() {
 
       {/* RECENT INVOICES */}
       <div style={{ marginTop: 40 }}>
-        <h2>Recent Invoices</h2>
+        <h2>Recent Quotation</h2>
 
         <table
           style={{

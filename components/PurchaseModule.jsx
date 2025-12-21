@@ -220,7 +220,7 @@ export default function PurchaseModule() {
                   <option value="">Select Product</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name}
+                      {p.name} - {p?.quantity} in stock
                     </option>
                   ))}
                 </select>

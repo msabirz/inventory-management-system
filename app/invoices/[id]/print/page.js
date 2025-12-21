@@ -52,11 +52,12 @@ export default function InvoicePrintPage({ params }) {
 
   // Simple header info
   const business = {
-    name: "Your Business Name",
-    addressLine1: "Address line 1",
-    addressLine2: "City, State - PIN",
-    phone: "Phone: 0000000000",
-    gstin: "GSTIN: 00AAAAA0000A0Z0",
+    name: "Palwe Ply and Hardware",
+    addressLine1: "Shri Shivaji Colony, beside Nasre Sabhagruh, ",
+    addressLine2: "Dubey Nagar Dominos, Hudkeshwar road, ",
+    addressLine3: "Nagpur, Maharashtra - 440034",
+    phone: "Phone: 8262983401",
+    gstin: "GSTIN: N/A",
   };
 
   return (
@@ -76,7 +77,7 @@ export default function InvoicePrintPage({ params }) {
           </button>
         </div>
       </div>
-
+    <div className="print-container">
       <div className={format === "thermal" ? "print-thermal" : "print-a4"}>
         <div className="print-sheet">
           {/* Header */}
@@ -85,6 +86,7 @@ export default function InvoicePrintPage({ params }) {
               <h2 className="business-name">{business.name}</h2>
               <div>{business.addressLine1}</div>
               <div>{business.addressLine2}</div>
+              <div>{business.addressLine3}</div>
               <div>{business.phone}</div>
               <div>{business.gstin}</div>
             </div>
@@ -152,7 +154,7 @@ export default function InvoicePrintPage({ params }) {
           </div>
         </div>
       </div>
-
+    </div>
       {/* Styles */}
       <style jsx>{`
         .print-a4 { padding: 24px; display: flex; justify-content: center; }

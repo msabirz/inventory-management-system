@@ -49,7 +49,7 @@ export default function RootLayout({ children }) {
             </NavLink>
             <NavLink href="/stock-adjustments" exact>Stock Adjustments</NavLink>
             <NavLink href="/import" exact>Customers Import</NavLink>
-            <NavLink href="/invoices" exact>Invoices</NavLink>
+            <NavLink href="/invoices" exact>Quotations</NavLink>
             <NavLink href="/reports" exact>Reports</NavLink>
             <NavLink href="/backup" exact>Backups</NavLink>
             <NavLink href="/settings" exact>Settings</NavLink>
