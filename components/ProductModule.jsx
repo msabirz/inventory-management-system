@@ -12,6 +12,7 @@ export default function ProductModule() {
     name: "",
     sku: "",
     price: 0,
+    sellingPrice: 0,
     quantity: 0,
     description: "",
     categoryId: "",
@@ -52,6 +53,7 @@ export default function ProductModule() {
         name: "",
         sku: "",
         price: 0,
+        sellingPrice: 0,
         quantity: 0,
         description: "",
         categoryId: "",
@@ -69,6 +71,7 @@ export default function ProductModule() {
       name: form.name,
       sku: form.sku,
       price: Number(form.price),
+      sellingPrice: Number(form.sellingPrice),
       quantity: Number(form.quantity),
       description: form.description,
       categoryId: Number(form.categoryId),
@@ -90,6 +93,7 @@ export default function ProductModule() {
       sku: form.sku,
       price: Number(form.price),
       quantity: Number(form.quantity),
+      sellingPrice: Number(form.sellingPrice),
       description: form.description,
       categoryId: Number(form.categoryId),
     };
@@ -130,6 +134,9 @@ export default function ProductModule() {
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Name</th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>SKU</th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Price</th>
+              <th style={{ padding: 8, border: "1px solid #ddd" }}>
+                Selling Price
+              </th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Qty</th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Category</th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>
@@ -150,6 +157,9 @@ export default function ProductModule() {
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   {p.price}
+                </td>
+                <td style={{ padding: 8, border: "1px solid #ddd" }}>
+                  {p.sellingPrice}
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   {p.quantity}
@@ -218,6 +228,16 @@ export default function ProductModule() {
                   placeholder="Price"
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  style={{ padding: 8, width: "100%", marginBottom: 10 }}
+                />
+
+                <input
+                  type="number"
+                  placeholder="Selling Price"
+                  value={form.sellingPrice}
+                  onChange={(e) =>
+                    setForm({ ...form, sellingPrice: e.target.value })
+                  }
                   style={{ padding: 8, width: "100%", marginBottom: 10 }}
                 />
 

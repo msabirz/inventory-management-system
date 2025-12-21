@@ -35,6 +35,7 @@ export async function PUT(request, { params }) {
         quantity: Number(data.quantity),
         description: data.description,
         categoryId: Number(data.categoryId),
+        sellingPrice: Number(data.sellingPrice),
       }
     });
 

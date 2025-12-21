@@ -1,15 +1,19 @@
+// app/api/invoices/route.js
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// GET ALL INVOICES
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// ------------------------ GET ALL ------------------------
 export async function GET() {
   try {
     const invoices = await prisma.invoice.findMany({
       include: {
         customer: true,
-        items: {
-          include: { product: true },
-        },
+        items: { include: { product: true } },
       },
       orderBy: { id: "desc" },
     });
@@ -17,14 +21,11 @@ export async function GET() {
     return NextResponse.json(invoices);
   } catch (error) {
     console.error("Invoices GET Error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch invoices" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch invoices" }, { status: 500 });
   }
 }
 
-// CREATE INVOICE
+// ------------------------ CREATE INVOICE ------------------------
 export async function POST(request) {
   try {
     const data = await request.json();
@@ -45,55 +46,48 @@ export async function POST(request) {
 
       total,
       remarks,
+      date,
     } = data;
 
-    // Create invoice header
+    // 1. Create invoice header
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
-        customerId,
-        subtotal,
-        discount,
+        customerId: customerId ? Number(customerId) : null,
+        date: date ? new Date(date) : new Date(),
 
-        cgstPercent,
-        cgstAmount,
-        sgstPercent,
-        sgstAmount,
-        igstPercent,
-        igstAmount,
+        subtotal: num(subtotal),
+        discount: num(discount),
 
-        total,
-        remarks,
+        cgstPercent: num(cgstPercent),
+        cgstAmount: num(cgstAmount),
+        sgstPercent: num(sgstPercent),
+        sgstAmount: num(sgstAmount),
+        igstPercent: num(igstPercent),
+        igstAmount: num(igstAmount),
+
+        total: num(total),
+        remarks: remarks || "",
       },
     });
 
-    // Add line items + reduce stock
-    for (let item of items) {
+    // 2. Add items + decrement stock
+    for (const item of items) {
       await prisma.invoiceItem.create({
         data: {
           invoiceId: invoice.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          pricePerUnit: item.pricePerUnit,
-          total: item.total,
-        },
-      });
-
-      // Reduce stock
-      await prisma.product.update({
-        where: { id: item.productId },
-        data: {
-          quantity: { decrement: item.quantity },
+          productId: Number(item.productId),
+          quantity: num(item.quantity),
+          pricePerUnit: num(item.pricePerUnit),
+          total: num(item.total),
         },
       });
     }
 
     return NextResponse.json(invoice, { status: 201 });
+
   } catch (error) {
     console.error("Invoice POST Error:", error);
-    return NextResponse.json(
-      { error: "Failed to create invoice" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 });
   }
 }

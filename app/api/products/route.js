@@ -24,6 +24,7 @@ export async function POST(request) {
         name: data.name,
         sku: data.sku,
         price: Number(data.price),
+        sellingPrice: Number(data.sellingPrice),
         quantity: Number(data.quantity),
         description: data.description,
         categoryId: Number(data.categoryId),

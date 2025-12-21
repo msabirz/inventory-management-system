@@ -1,3 +1,46 @@
+/* HIDE EVERYTHING EXCEPT THE PRINT SHEET */
+@media print {
+
+    /* Completely remove from layout, not only hide */
+    nav,
+    header,
+    footer,
+    aside,
+    .sidebar,
+    .navigation,
+    .navbar,
+    .layout-sidebar,
+    .layout-nav,
+    .left-menu {
+        display: none !important;
+        visibility: hidden !important;
+    }
+        /* Remove page padding/margins inserted by your layout */
+        body,
+        html {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+    
+        /* Fully isolate the invoice */
+        .print-container,
+        .print-sheet {
+            display: block !important;
+            position: relative !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+        }
+    
+        /* Hide background UI containers */
+        .app-wrapper,
+        .main-layout,
+        .content-area {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+}
 /* Reset defaults */
 * {
     margin: 0;

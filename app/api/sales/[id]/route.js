@@ -12,7 +12,6 @@ export async function GET(_, { params }) {
       where: { id: Number(params.id) },
       include: { product: true, customer: true },
     });
-
     return NextResponse.json(sale || {});
   } catch (err) {
     console.error("Sale GET Error:", err);
@@ -31,6 +30,10 @@ export async function PUT(req, { params }) {
       quantity,
       rate,
       pricePerUnit,
+      discount,
+      paidAmount,
+      creditAmount,
+      netAmount,
       remarks,
       date,
     } = body;
@@ -41,15 +44,19 @@ export async function PUT(req, { params }) {
     }
     const isoDate = new Date(date + "T00:00:00");
 
-    // ---- NUMBER CONVERSION ----
+    // ---- NUMBERS ----
     const newQty = safeNumber(quantity);
     const newRate = safeNumber(rate);
     const newPPU = safeNumber(pricePerUnit || rate);
     const newProductId = Number(productId);
 
     const total = newQty * newRate;
+    const disc = safeNumber(discount);
+    const net = safeNumber(netAmount || total - disc);
+    const paid = safeNumber(paidAmount);
+    const credit = safeNumber(creditAmount || net - paid);
 
-    // ---- GET OLD SALE ----
+    // ---- OLD SALE ----
     const oldSale = await prisma.sale.findUnique({ where: { id } });
     if (!oldSale) {
       return NextResponse.json({ error: "Sale not found" }, { status: 404 });
@@ -58,38 +65,41 @@ export async function PUT(req, { params }) {
     const oldQty = oldSale.quantity;
     const oldProductId = oldSale.productId;
 
-    // ---- UPDATE SALE ENTRY ----
+    // ---- UPDATE SALE ----
     const updated = await prisma.sale.update({
       where: { id },
       data: {
         productId: newProductId,
         customerId: customerId ? Number(customerId) : null,
+
         quantity: newQty,
         rate: newRate,
         pricePerUnit: newPPU,
+
         totalAmount: total,
+        discount: disc,
+        netAmount: net,
+        paidAmount: paid,
+        creditAmount: credit,
+
         remarks: remarks || "",
         date: isoDate,
       },
     });
 
-    // ---- STOCK ADJUSTMENT ----
+    // ---- STOCK ADJUSTMENT (UNCHANGED) ----
     if (newProductId !== oldProductId) {
-      // return qty to old product
       await prisma.product.update({
         where: { id: oldProductId },
         data: { quantity: { increment: oldQty } },
       });
 
-      // subtract qty from new product
       await prisma.product.update({
         where: { id: newProductId },
         data: { quantity: { decrement: newQty } },
       });
     } else {
-      // same product → adjust difference
       const diff = newQty - oldQty;
-
       if (diff !== 0) {
         await prisma.product.update({
           where: { id: newProductId },
