@@ -57,7 +57,6 @@ export default function InvoiceBuilder() {
   const updateItem = (index, key, value) => {
     const updated = [...items];
     updated[index][key] = value;
-
     // Auto-update price when selecting product
     if (key === "productId") {
       const pr = products.find((p) => p.id === Number(value));
@@ -65,12 +64,13 @@ export default function InvoiceBuilder() {
       if (pr) {
         updated[index].pricePerUnit = pr.price;
         updated[index].sku = pr.sku;
+        updated[index].sellingPrice = pr.sellingPrice;
       }
     }
 
     // Auto-calc line total
     updated[index].total =
-      updated[index].quantity * updated[index].pricePerUnit;
+      updated[index].quantity * updated[index].sellingPrice;
 
     setItems(updated);
   };
@@ -215,12 +215,11 @@ export default function InvoiceBuilder() {
               <th>Product</th>
               <th>Qty</th>
               <th>SKU</th>
-              <th>Price</th>
+              <th>Selling Price</th>
               <th>Total</th>
               <th></th>
             </tr>
           </thead>
-          {console.log("dd", items)}
           <tbody>
             {items.map((it, i) => (
               <tr key={i}>
@@ -253,9 +252,9 @@ export default function InvoiceBuilder() {
                 <td>
                   <input
                     type="number"
-                    value={it.pricePerUnit}
+                    value={it.sellingPrice}
                     onChange={(e) =>
-                      updateItem(i, "pricePerUnit", Number(e.target.value))
+                      updateItem(i, "sellingPrice", Number(e.target.value))
                     }
                   />
                 </td>

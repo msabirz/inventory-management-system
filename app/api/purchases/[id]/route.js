@@ -44,7 +44,10 @@ export async function DELETE(request, { params }) {
     // Adjust stock
     await prisma.product.update({
       where: { id: purchase.productId },
-      data: { quantity: newQty },
+      data: { quantity: newQty,categoryId: Number(data.categoryId),
+          sellingPrice: Number(data.sellingPrice),
+          price: Number(data.pricePerUnit), },
+      
     });
 
     // Delete purchase
@@ -102,7 +105,6 @@ export async function PUT(request, { params }) {
     const updated = await prisma.purchase.update({
       where: { id },
       data: {
-        ...data,
         date: isoDate,
         productId: newProductId,
         supplierId: data.supplierId ? Number(data.supplierId) : null,
@@ -118,12 +120,15 @@ export async function PUT(request, { params }) {
 
     // Case 1: Product changed
     if (newProductId !== oldProductId) {
-
+      console.log("log1");
       // remove qty from old product
       await prisma.product.update({
         where: { id: oldProductId },
         data: {
           quantity: { decrement: oldQty },
+          categoryId: Number(data.categoryId),
+          sellingPrice: Number(data.sellingPrice),
+          price: Number(data.pricePerUnit),
         },
       });
 
@@ -132,19 +137,35 @@ export async function PUT(request, { params }) {
         where: { id: newProductId },
         data: {
           quantity: { increment: newQty },
+          categoryId: Number(data.categoryId),
+          sellingPrice: Number(data.sellingPrice),
+          price: Number(data.pricePerUnit),
         },
       });
 
     } else {
       // Case 2: product same → adjust diff
       const diff = newQty - oldQty;
+      console.log("log2",data, diff);
 
       if (diff !== 0) {
         await prisma.product.update({
           where: { id: newProductId },
           data: {
             quantity: { increment: diff },
-          },
+            categoryId: Number(data.categoryId),
+            sellingPrice: Number(data.sellingPrice),
+            price: Number(data.pricePerUnit),
+            },
+        });
+      }else{
+        await prisma.product.update({
+          where: { id: newProductId },
+          data: {
+            categoryId: Number(data.categoryId),
+            sellingPrice: Number(data.sellingPrice),
+            price: Number(data.pricePerUnit),
+            },
         });
       }
     }

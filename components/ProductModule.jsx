@@ -24,6 +24,7 @@ export default function ProductModule() {
     setLoading(true);
     const p = await fetch(API).then((r) => r.json());
     const c = await fetch("/api/categories").then((r) => r.json());
+    console.log("products--", p);
     setList(p);
     setCategories(c);
     setLoading(false);

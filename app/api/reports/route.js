@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
-    const { type, startDate, endDate, customerId, productId } = await request.json();
+    const { type, startDate, endDate, customerId, productId, supplierId } = await request.json();
 
     // Build filter
     const filter = {
@@ -15,6 +15,7 @@ export async function POST(request) {
 
     if (customerId) filter.customerId = Number(customerId);
     if (productId) filter.productId = Number(productId);
+    if (supplierId) filter.supplierId = Number(supplierId);
 
     let data = [];
 
@@ -35,19 +36,25 @@ export async function POST(request) {
         where: filter,
         include: { product: true },
       });
-
+      console.log("sales",sales)
       const purchases = await prisma.purchase.findMany({
         where: filter,
         include: { product: true },
       });
-
+      const expenses = await prisma.expense.findMany({
+        where: {date: {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      },},
+      });
       let totalSales = sales.reduce((acc, s) => acc + s.totalAmount, 0);
-      let totalPurchase = purchases.reduce((acc, p) => acc + p.totalAmount, 0);
-
+      let totalPurchase = sales.reduce((acc, p) => acc + p.product.price * p.quantity, 0);
+      let totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
       data = {
         totalSales,
         totalPurchase,
-        profit: totalSales - totalPurchase,
+        totalExpenses,
+        profit: (totalSales - totalPurchase) - totalExpenses,
       };
     }
 

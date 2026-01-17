@@ -5,6 +5,7 @@ export default function PurchaseModule() {
   const [list, setList] = useState([]);
   const [products, setProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -27,10 +28,12 @@ export default function PurchaseModule() {
     const p = await fetch(API).then((r) => r.json());
     const productsList = await fetch("/api/products").then((r) => r.json());
     const suppliersList = await fetch("/api/suppliers").then((r) => r.json());
-
+    const categoriesList = await fetch("/api/categories").then((r) => r.json());
+    console.log("Fetched categoriesList:", categoriesList);
     setList(p);
     setProducts(productsList);
     setSuppliers(suppliersList);
+    setCategories(categoriesList);
 
     setLoading(false);
   };
@@ -52,7 +55,7 @@ export default function PurchaseModule() {
   const open = (type, item = null) => {
     setModal(type);
     setSelected(item);
-
+    console.log("item", item);
     if (item) {
       setForm({
         productId: item.productId,
@@ -64,6 +67,8 @@ export default function PurchaseModule() {
         date: item.date
           ? item.date.substring(0, 10)
           : new Date().toISOString().substring(0, 10),
+        sellingPrice: item?.product?.sellingPrice || 0,
+        categoryId: item?.product?.categoryId || "",
       });
     } else {
       setForm({
@@ -84,6 +89,8 @@ export default function PurchaseModule() {
   };
 
   const createItem = async () => {
+    console.log("Form Data:", form);
+    // return;
     await fetch(API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -149,7 +156,6 @@ export default function PurchaseModule() {
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Actions</th>
             </tr>
           </thead>
-
           <tbody>
             {list.map((p) => (
               <tr key={p.id}>
@@ -209,22 +215,34 @@ export default function PurchaseModule() {
             {(modal === "add" || modal === "edit") && (
               <>
                 <h2>{modal === "add" ? "Add Purchase" : "Edit Purchase"}</h2>
-
                 <select
                   value={form.productId}
-                  onChange={(e) =>
-                    setForm({ ...form, productId: Number(e.target.value) })
-                  }
+                  onChange={(e) => {
+                    const product = list.find(
+                      (p) => p.product.id === Number(e.target.value)
+                    );
+                    setForm({
+                      ...form,
+                      productId: Number(e.target.value),
+                      supplierId: product ? product.supplierId : "",
+                      pricePerUnit: product ? product.pricePerUnit : 0,
+                      sellingPrice: product ? product?.product.sellingPrice : 0,
+                      categoryId: product ? product?.product.categoryId : "",
+                      quantity: product ? product.quantity : 1,
+                    });
+                  }}
                   style={{ padding: 8, width: "100%", marginBottom: 10 }}
                 >
                   <option value="">Select Product</option>
+                  {modal === "add" && (
+                    <option value="0">Add New Product</option>
+                  )}
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} - {p?.quantity} in stock
                     </option>
                   ))}
                 </select>
-
                 <select
                   value={form.supplierId}
                   onChange={(e) =>
@@ -239,7 +257,38 @@ export default function PurchaseModule() {
                     </option>
                   ))}
                 </select>
-
+                <select
+                  value={form.categoryId}
+                  onChange={(e) =>
+                    setForm({ ...form, categoryId: e.target.value })
+                  }
+                  style={{
+                    padding: 8,
+                    width: "100%",
+                    marginBottom: 10,
+                  }}
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Product Name"
+                  value={form.productName}
+                  onChange={(e) =>
+                    setForm({ ...form, productName: e.target.value })
+                  }
+                  style={{
+                    display: form?.productId === 0 ? "block" : "none",
+                    padding: 8,
+                    width: "100%",
+                    marginBottom: 10,
+                  }}
+                />
                 <input
                   type="number"
                   placeholder="Quantity"
@@ -256,6 +305,16 @@ export default function PurchaseModule() {
                   value={form.pricePerUnit}
                   onChange={(e) =>
                     setForm({ ...form, pricePerUnit: e.target.value })
+                  }
+                  style={{ padding: 8, width: "100%", marginBottom: 10 }}
+                />
+
+                <input
+                  type="number"
+                  placeholder="Selling Price per Unit"
+                  value={form.sellingPrice}
+                  onChange={(e) =>
+                    setForm({ ...form, sellingPrice: e.target.value })
                   }
                   style={{ padding: 8, width: "100%", marginBottom: 10 }}
                 />

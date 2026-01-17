@@ -19,6 +19,7 @@ export default function ReportsPage() {
   const [products, setProducts] = useState([]);
 
   const [customerId, setCustomerId] = useState("");
+  const [supplierId, setSupplierId] = useState("");
   const [productId, setProductId] = useState("");
 
   const [data, setData] = useState(null);
@@ -46,10 +47,12 @@ export default function ReportsPage() {
         endDate,
         customerId,
         productId,
+        supplierId
       }),
     });
 
     const json = await res.json();
+    console.log("report data", json);
     setData(json);
   };
 
@@ -140,7 +143,9 @@ export default function ReportsPage() {
             <>
               <div>
                 <label>Supplier</label>
-                <select>
+                <select
+                  value={supplierId}
+                  onChange={(e) => setSupplierId(e.target.value)}>
                   <option>All</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -229,6 +234,7 @@ export default function ReportsPage() {
         >
           <p>Total Sales: ₹{data.totalSales}</p>
           <p>Total Purchases: ₹{data.totalPurchase}</p>
+          <p>Total Expenses: ₹{data.totalExpenses}</p>
           <p>
             <strong>Profit: ₹{data.profit}</strong>
           </p>

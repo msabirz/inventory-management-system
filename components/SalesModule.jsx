@@ -323,7 +323,8 @@ export default function SalesModule() {
                     value={customers.find((c) => c.id === form.customerId)}
                     options={customers}
                     onChange={(opt) => {
-                      setForm({ ...form, customerId: opt.value });
+                      console.log(opt);
+                      setForm({ ...form, customerId: opt?.value });
                     }}
                   />
                 )}
@@ -437,8 +438,27 @@ export default function SalesModule() {
 
   function SortTh({ label, col }) {
     return (
-      <th onClick={() => onSort(col)} style={{ cursor: "pointer", padding: 8 }}>
-        {label} {sortKey === col && (sortDir === "asc" ? "▲" : "▼")}
+      <th
+        onClick={() => onSort(col)}
+        style={{
+          cursor: "pointer",
+          padding: 8,
+          color: sortKey === col ? "#666" : "#ccc",
+          fontSize: "0.85em",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span style={{ color: "#000" }}>{label}</span>
+          <span style={{ color: "#8f8f8fff", fontSize: "0.85em" }}>
+            {sortKey === col ? (sortDir === "asc" ? "▲" : "▼") : "▲ ▼"}
+          </span>
+        </div>
       </th>
     );
   }

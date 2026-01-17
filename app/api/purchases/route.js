@@ -34,24 +34,39 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
+     console.log("data--",data)
+    //if productId is 0 then create the product first
+    if (Number(data.productId) === 0) {
+      const newProduct = await prisma.product.create({
+        data: {
+          name: data.productName,
+          quantity: Number(data.quantity),
+          price: Number(data.pricePerUnit),
+          sellingPrice: data.sellingPrice
+            ? Number(data.sellingPrice)
+            : 0,
+          categoryId:Number(data.categoryId),
+        },
+      });
+      data.productId = newProduct.id;
+    }else{
+      // Auto increase product stock only productId is not 0
+          await prisma.product.update({
+            where: { id: Number(data.productId) },
+            data: {
+              quantity: { increment: Number(data.quantity) },
+            },
+        });
+    }
+    console.log("data",data)
     const created = await prisma.purchase.create({
       data: {
-        ...data,
         date: isoDate, // ✔ fixed
         productId: Number(data.productId),
         supplierId: data.supplierId ? Number(data.supplierId) : null,
         quantity: Number(data.quantity),
         pricePerUnit: Number(data.pricePerUnit),
         totalAmount: Number(data.quantity) * Number(data.pricePerUnit),
-      },
-    });
-
-    // Auto increase product stock
-    await prisma.product.update({
-      where: { id: Number(data.productId) },
-      data: {
-        quantity: { increment: Number(data.quantity) },
       },
     });
 
