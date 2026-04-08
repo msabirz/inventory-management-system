@@ -53,6 +53,7 @@ export default function RootLayout({ children }) {
             <NavLink href="/reports" exact>Reports</NavLink>
             <NavLink href="/backup" exact>Backups</NavLink>
             <NavLink href="/settings" exact>Settings</NavLink>
+            <NavLink href="/ledger" exact>Customer Ledger</NavLink>
           </aside>
 
           {/* MAIN AREA */}

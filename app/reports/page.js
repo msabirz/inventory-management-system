@@ -205,7 +205,7 @@ export default function ReportsPage() {
                 <th style={th}>Total</th>
               </tr>
             </thead>
-
+          {console.log("data",data)}
             <tbody>
               {data.map((row) => (
                 <tr key={row.id}>

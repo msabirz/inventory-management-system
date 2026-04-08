@@ -28,7 +28,7 @@ export async function POST(request) {
     } else if (type === "purchases") {
       data = await prisma.purchase.findMany({
         where: filter,
-        include: { product: true, supplier: true },
+        include: { product: true, supplier: true},
         orderBy: { date: "desc" },
       });
     } else if (type === "profit") {

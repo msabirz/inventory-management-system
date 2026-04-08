@@ -124,7 +124,11 @@ export default function ExpenseCategoriesPage() {
             />
 
             <div style={{ marginTop: 15 }}>
-              <button onClick={saveCategory} style={btnPrimary}>
+              <button
+                onClick={saveCategory}
+                style={!name ? btnSecondary : btnPrimary}
+                disabled={!name}
+              >
                 Save
               </button>
               <button onClick={() => setModalOpen(false)} style={btnSecondary}>
