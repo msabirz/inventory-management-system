@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDate } from "@/lib/utils";
 
 export default function InvoiceDetailPage({ params }) {
   const { id } = params;
@@ -38,10 +39,7 @@ export default function InvoiceDetailPage({ params }) {
         </h2>
 
         <p>
-          <strong>Date:</strong>{" "}
-          {invoice.date
-            ? new Date(invoice.date).toLocaleDateString()
-            : "—"}
+          <strong>Date:</strong> {formatDate(invoice.date)}
         </p>
 
         <p>

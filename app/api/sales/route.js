@@ -35,6 +35,10 @@ export async function POST(req) {
       netAmount,
       remarks,
       date,
+      billNumber,
+      customerPhone,
+      paymentMode,
+      paymentRef,
     } = body;
 
     // ---- DATE ----
@@ -59,23 +63,31 @@ export async function POST(req) {
       data: {
         productId: Number(productId),
         customerId: customerId ? Number(customerId) : null,
-
         quantity: qty,
         rate: r,
         pricePerUnit: ppu,
-
         totalAmount: total,
         discount: disc,
         netAmount: net,
         paidAmount: paid,
         creditAmount: credit,
-
         remarks: remarks || "",
         date: isoDate,
+        billNumber: billNumber || null,
+        paymentMode: paymentMode || null,
+        paymentRef: paymentRef || null,
       },
     });
 
-    // ---- STOCK DECREASE (UNCHANGED) ----
+    // ---- UPDATE CUSTOMER PHONE ----
+    if (customerId && customerPhone) {
+      await prisma.customer.update({
+        where: { id: Number(customerId) },
+        data: { phone: customerPhone },
+      });
+    }
+
+    // ---- STOCK DECREASE ----
     await prisma.product.update({
       where: { id: Number(productId) },
       data: { quantity: { decrement: qty } },

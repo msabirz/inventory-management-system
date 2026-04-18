@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function SupplierModule() {
   const [list, setList] = useState([]);
@@ -74,6 +75,50 @@ export default function SupplierModule() {
   };
 
   return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SupplierModuleContent
+        list={list}
+        loading={loading}
+        modal={modal}
+        selected={selected}
+        form={form}
+        setForm={setForm}
+        open={open}
+        close={close}
+        createItem={createItem}
+        updateItem={updateItem}
+        deleteItem={deleteItem}
+      />
+    </Suspense>
+  );
+}
+
+function SupplierModuleContent({
+  list,
+  loading,
+  modal,
+  selected,
+  form,
+  setForm,
+  open,
+  close,
+  createItem,
+  updateItem,
+  deleteItem,
+}) {
+  const searchParams = useSearchParams();
+  const supplierId = searchParams.get("id");
+
+  useEffect(() => {
+    if (supplierId && !loading && list.length > 0) {
+      const supplier = list.find((s) => String(s.id) === String(supplierId));
+      if (supplier) {
+        open("edit", supplier);
+      }
+    }
+  }, [supplierId, loading, list]);
+
+  return (
     <div style={{ maxWidth: 1000, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, marginBottom: 15 }}>Suppliers</h1>
 
@@ -133,6 +178,7 @@ export default function SupplierModule() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            zIndex: 100,
           }}
         >
           <div

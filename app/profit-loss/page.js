@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDate } from "@/lib/utils";
 
 const presets = [
   { key: "today", label: "Today" },
@@ -78,6 +79,8 @@ export default function ProfitLossPage() {
 
   // derive with fallback to support old field names
   const revenue = data ? data.revenue ?? data.totalSales ?? 0 : 0;
+  const grossSales = data ? data.grossSales ?? revenue : revenue;
+  const returnAmount = data ? data.returnAmount ?? 0 : 0;
   const cogs = data ? data.cogs ?? data.totalCOGS ?? 0 : 0;
   const expenses = data ? data.expenses ?? data.totalExpenses ?? 0 : 0;
   const grossProfit = data ? data.grossProfit ?? (revenue - cogs) : 0;
@@ -91,8 +94,8 @@ export default function ProfitLossPage() {
       {data && (
         <p style={{ fontSize: 12, color: "#6b7280", marginBottom: 12 }}>
           Showing:{" "}
-          {data.from ? new Date(data.from).toLocaleDateString() : ""} to{" "}
-          {data.to ? new Date(data.to).toLocaleDateString() : ""}
+          {formatDate(data.from)} to{" "}
+          {formatDate(data.to)}
         </p>
       )}
 
@@ -201,7 +204,7 @@ export default function ProfitLossPage() {
                 "Gross Profit = Revenue – COGS"
               }
             />
-            <SummaryCard
+            {/* <SummaryCard
               title={normalProfit < 0 ? "Normal Loss" : "Normal Profit"}
               value={normalProfit}
               color={normalProfit < 0 ? "#dc2626" : "#0ea5e9"}
@@ -210,7 +213,7 @@ export default function ProfitLossPage() {
                 data.tooltips?.normalProfit ||
                 "Normal Profit = Σ (Selling Price – Cost Price) × Qty"
               }
-            />
+            /> */}
             <SummaryCard
               title="Expenses"
               value={expenses}
@@ -244,14 +247,30 @@ export default function ProfitLossPage() {
                   <tr>
                     <td
                       style={tdKey}
+                    >
+                      Gross Sales (+)
+                    </td>
+                    <td style={tdValue}>₹ {format(grossSales)}</td>
+                  </tr>
+                  <tr>
+                    <td
+                      style={tdKey}
+                    >
+                      Returns (-)
+                    </td>
+                    <td style={{ ...tdValue, color: "#dc2626" }}>₹ {format(returnAmount)}</td>
+                  </tr>
+                  <tr>
+                    <td
+                      style={tdKey}
                       title={
                         data.tooltips?.revenue ||
                         "Revenue = Σ (Selling Price × Quantity)"
                       }
                     >
-                      Revenue
+                      Net Revenue
                     </td>
-                    <td style={tdValue}>₹ {format(revenue)}</td>
+                    <td style={{ ...tdValue, borderTop: "1px solid #eee" }}>₹ {format(revenue)}</td>
                   </tr>
                   <tr>
                     <td
@@ -427,52 +446,52 @@ function SummaryCard({ title, value, color, tooltip, icon }) {
         </div>
 
         {tooltip && (
-  <div
-    style={{ position: "relative", cursor: "pointer", zIndex: 50 }}
-    onMouseEnter={() => setShowTip(true)}
-    onMouseLeave={() => setShowTip(false)}
-  >
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 18,
-        height: 18,
-        borderRadius: "999px",
-        border: "1px solid #cbd5f5",
-        fontSize: 11,
-        color: "#4b5563",
-        background: "#f9fafb",
-      }}
-    >
-      i
-    </span>
+          <div
+            style={{ position: "relative", cursor: "pointer", zIndex: 50 }}
+            onMouseEnter={() => setShowTip(true)}
+            onMouseLeave={() => setShowTip(false)}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 18,
+                height: 18,
+                borderRadius: "999px",
+                border: "1px solid #cbd5f5",
+                fontSize: 11,
+                color: "#4b5563",
+                background: "#f9fafb",
+              }}
+            >
+              i
+            </span>
 
-    {showTip && (
-      <div
-           style={{
-            position: "absolute",
-            bottom: "110%",        // show ABOVE the icon
-            left: "50%",           // center horizontally
-            transform: "translateX(-50%)",
-            width: 260,            // 👈 increase tooltip width
-            background: "#111827",
-            color: "white",
-            padding: "8px 10px",
-            fontSize: 11,
-            borderRadius: 6,
-            boxShadow: "0 6px 16px rgba(15,23,42,0.45)",
-            zIndex: 9999,          // 👈 always stays above other cards
-            lineHeight: 1.4,
-            whiteSpace: "normal",  // 👈 allow wrapping
-          }}
-      >
-        {tooltip}
-      </div>
-    )}
-  </div>
-)}
+            {showTip && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "110%",        // show ABOVE the icon
+                  left: "50%",           // center horizontally
+                  transform: "translateX(-50%)",
+                  width: 260,            // 👈 increase tooltip width
+                  background: "#111827",
+                  color: "white",
+                  padding: "8px 10px",
+                  fontSize: 11,
+                  borderRadius: 6,
+                  boxShadow: "0 6px 16px rgba(15,23,42,0.45)",
+                  zIndex: 9999,          // 👈 always stays above other cards
+                  lineHeight: 1.4,
+                  whiteSpace: "normal",  // 👈 allow wrapping
+                }}
+              >
+                {tooltip}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
 

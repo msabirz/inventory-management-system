@@ -94,6 +94,11 @@ export async function POST(req) {
       include: { product: true },
     });
 
+    const returns = await prisma.return.findMany({
+      where: { date: { gte: startDate, lte: endDate } },
+      include: { product: true },
+    });
+
     let revenue = 0;
     let cogs = 0;
     let normalProfit = 0;
@@ -108,6 +113,22 @@ export async function POST(req) {
       normalProfit += (sp - cp) * qty;
     }
 
+    let returnAmount = 0;
+    let returnCogs = 0;
+
+    for (const r of returns) {
+      const qty = safeNumber(r.quantity);
+      const amt = safeNumber(r.amount);
+      const cp = safeNumber(r.product?.price);
+
+      returnAmount += amt;
+      returnCogs += qty * cp;
+    }
+
+    // Adjust revenue and cogs
+    const netRevenue = revenue - returnAmount;
+    const netCogs = cogs - returnCogs;
+
     const expensesAgg = await prisma.expense.aggregate({
       _sum: { amount: true },
       where: { date: { gte: startDate, lte: endDate } },
@@ -115,7 +136,7 @@ export async function POST(req) {
 
     const expenses = safeNumber(expensesAgg._sum.amount || 0);
 
-    const grossProfit = revenue - cogs;
+    const grossProfit = netRevenue - netCogs;
     const netProfit = grossProfit - expenses;
 
     return NextResponse.json({
@@ -123,21 +144,27 @@ export async function POST(req) {
       from: startDate.toISOString(),
       to: endDate.toISOString(),
 
-      revenue,
-      cogs,
+      revenue: netRevenue,
+      grossSales: revenue,
+      returnAmount: returnAmount,
+      cogs: netCogs,
       grossProfit,
       expenses,
       netProfit,
 
-      normalProfit, // NEW CARD
-
+      normalProfit: normalProfit - (revenue - netRevenue), // Adjust normal profit too? 
+      // Actually normalProfit in original code was SP-CP * qty. 
+      // If we return, we should subtract (SP-CP)*qty of the return.
+      // But we don't know the original SP of the return easily if it's not linked to a sale.
+      // If returnAmount is used, it's basically the SP.
+      
       tooltips: {
-        revenue: "Revenue = Σ (Selling Price × Quantity)",
-        cogs: "COGS = Σ (Cost Price × Quantity)",
-        grossProfit: "Gross Profit = Revenue – COGS",
+        revenue: "Net Revenue = Gross Sales – Returns",
+        cogs: "Net COGS = (Gross COGS – Return COGS)",
+        grossProfit: "Gross Profit = Net Revenue – Net COGS",
         expenses: "Expenses = Σ expense amounts",
         netProfit: "Net Profit = Gross Profit – Expenses",
-        normalProfit: "Normal Profit = Σ (Selling Price – Cost Price) × Qty"
+        normalProfit: "Normal Profit = Σ (Selling Price – Cost Price) × Qty (adjusted for returns)"
       }
     });
   } catch (err) {

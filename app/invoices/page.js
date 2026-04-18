@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDate } from "@/lib/utils";
 
 export default function InvoiceListPage() {
   const [invoices, setInvoices] = useState([]);
@@ -39,7 +40,7 @@ export default function InvoiceListPage() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 24, marginBottom: 20 }}>Invoices</h1>
+      <h1 style={{ fontSize: 24, marginBottom: 20 }}>Estimates</h1>
 
       <a
         href="/invoices/create"
@@ -66,7 +67,7 @@ export default function InvoiceListPage() {
         >
           <thead>
             <tr style={{ background: "#f3f3f3" }}>
-              <th style={th}>Invoice No</th>
+              <th style={th}>EST. No</th>
               <th style={th}>Customer</th>
               <th style={th}>Date</th>
               <th style={th}>Amount</th>
@@ -80,9 +81,7 @@ export default function InvoiceListPage() {
                 <td style={td}>{inv.invoiceNumber}</td>
                 <td style={td}>{inv.customer?.name || "-"}</td>
                 <td style={td}>
-                  {inv.date
-                    ? new Date(inv.date).toLocaleDateString()
-                    : "—"}
+                  {formatDate(inv.date)}
                 </td>
                 <td style={td}>₹{inv.total}</td>
                 <td style={td}>

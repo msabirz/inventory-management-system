@@ -71,7 +71,7 @@ export async function POST(request) {
       },
     });
 
-    // 2. Add items + decrement stock
+    // 2. Add items (Note: Quotations do NOT affect stock quantity)
     for (const item of items) {
       await prisma.invoiceItem.create({
         data: {
