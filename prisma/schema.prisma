@@ -8,16 +8,28 @@ datasource db {
 }
 
 model Customer {
-  id        Int      @id @default(autoincrement())
+  id        Int               @id @default(autoincrement())
   name      String
   phone     String?
   email     String?
   address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  Invoice   Invoice[]
   sales     Sale[]
+  payments  CustomerPayment[]
+  returns   Return[]
+}
 
-  Invoice Invoice[]
+model CustomerPayment {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  amount     Float
+  date       DateTime @default(now())
+  remarks     String?
+  paymentMode String?
+  paymentRef  String?
+  customer    Customer @relation(fields: [customerId], references: [id])
 }
 
 model Category {
@@ -30,24 +42,23 @@ model Category {
 }
 
 model Product {
-  id                Int     @id @default(autoincrement())
+  id                Int               @id @default(autoincrement())
   name              String
   sku               String?
-  price             Float   @default(0)
-  sellingPrice      Float   @default(0)
-  lowStockThreshold Int     @default(5)
-
-  quantity    Int        @default(0)
-  description String?
-  categoryId  Int
-  category    Category   @relation(fields: [categoryId], references: [id])
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  purchases   Purchase[]
-  sales       Sale[]
-
-  InvoiceItem      InvoiceItem[]
-  stockAdjustments StockAdjustment[]
+  price             Float             @default(0)
+  sellingPrice      Float             @default(0)
+  lowStockThreshold Int               @default(5)
+  quantity          Int               @default(0)
+  description       String?
+  categoryId        Int
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  InvoiceItem       InvoiceItem[]
+  category          Category          @relation(fields: [categoryId], references: [id])
+  purchases         Purchase[]
+  sales             Sale[]
+  stockAdjustments  StockAdjustment[]
+  returns           Return[]
 }
 
 model Supplier {
@@ -62,85 +73,73 @@ model Supplier {
 }
 
 model Purchase {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   productId    Int
   supplierId   Int?
   quantity     Int
-  pricePerUnit Float    @default(0)
-  totalAmount  Float    @default(0)
+  pricePerUnit Float     @default(0)
+  totalAmount  Float     @default(0)
   remarks      String?
-  date         DateTime @default(now())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  product  Product   @relation(fields: [productId], references: [id])
-  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  date         DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  supplier     Supplier? @relation(fields: [supplierId], references: [id])
+  product      Product   @relation(fields: [productId], references: [id])
 }
 
 model Sale {
-  id           Int      @id @default(autoincrement())
-
+  id           Int       @id @default(autoincrement())
   productId    Int
   customerId   Int?
-
   quantity     Int
   rate         Float
-  pricePerUnit Float    @default(0)
-
-  // --- AMOUNTS ---
-  totalAmount  Float    @default(0) // qty × rate
-  discount     Float    @default(0) // optional discount
-  netAmount    Float    @default(0) // totalAmount - discount
-  paidAmount   Float    @default(0) // cash received now
-  creditAmount Float    @default(0) // netAmount - paidAmount
-
+  pricePerUnit Float     @default(0)
+  totalAmount  Float     @default(0)
+  discount     Float     @default(0)
+  netAmount    Float     @default(0)
+  paidAmount   Float     @default(0)
+  creditAmount Float     @default(0)
   remarks      String?
-  date         DateTime @default(now())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  product  Product   @relation(fields: [productId], references: [id])
-  customer Customer? @relation(fields: [customerId], references: [id])
+  date         DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  billNumber   String?
+  paymentMode  String?
+  paymentRef   String?
+  customer     Customer? @relation(fields: [customerId], references: [id])
+  product      Product   @relation(fields: [productId], references: [id])
 }
 
-
-
 model Invoice {
-  id            Int      @id @default(autoincrement())
-  invoiceNumber String   @unique
+  id            Int           @id @default(autoincrement())
+  invoiceNumber String        @unique
   customerId    Int?
-  date          DateTime @default(now())
-
-  subtotal Float @default(0)
-  discount Float @default(0)
-
-  // GST fields
-  cgstPercent Float @default(0)
-  cgstAmount  Float @default(0)
-  sgstPercent Float @default(0)
-  sgstAmount  Float @default(0)
-  igstPercent Float @default(0)
-  igstAmount  Float @default(0)
-
-  total     Float    @default(0)
-  remarks   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  customer Customer?     @relation(fields: [customerId], references: [id])
-  items    InvoiceItem[]
+  date          DateTime      @default(now())
+  subtotal      Float         @default(0)
+  discount      Float         @default(0)
+  cgstPercent   Float         @default(0)
+  cgstAmount    Float         @default(0)
+  sgstPercent   Float         @default(0)
+  sgstAmount    Float         @default(0)
+  igstPercent   Float         @default(0)
+  igstAmount    Float         @default(0)
+  total         Float         @default(0)
+  remarks       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  items         InvoiceItem[]
 }
 
 model InvoiceItem {
-  id           Int   @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   invoiceId    Int
   productId    Int
   quantity     Int
   pricePerUnit Float
   total        Float
-
-  invoice Invoice @relation(fields: [invoiceId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  product      Product @relation(fields: [productId], references: [id])
+  invoice      Invoice @relation(fields: [invoiceId], references: [id])
 }
 
 model Settings {
@@ -159,25 +158,40 @@ model StockAdjustment {
   id        Int      @id @default(autoincrement())
   productId Int
   quantity  Int
-  type      String // damaged / expired / lost / manual
+  type      String
   note      String?
   date      DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
 }
 
 model ExpenseCategory {
-  id        Int       @id @default(autoincrement())
-  name      String
-  expenses  Expense[]
+  id       Int       @id @default(autoincrement())
+  name     String
+  expenses Expense[]
 }
 
 model Expense {
-  id          Int              @id @default(autoincrement())
-  title       String
-  amount      Float
-  date        DateTime         @default(now())
-  notes       String?
-  categoryId  Int
-  category    ExpenseCategory  @relation(fields: [categoryId], references: [id])
+  id         Int             @id @default(autoincrement())
+  title      String
+  amount     Float
+  date       DateTime        @default(now())
+  notes      String?
+  categoryId Int
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id])
+}
+
+model Return {
+  id            Int      @id @default(autoincrement())
+  invoiceNumber String?
+  productId     Int
+  customerId    Int?
+  quantity      Int
+  amount        Float    @default(0)
+  date          DateTime @default(now())
+  reason        String?
+  isBroken      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  product       Product  @relation(fields: [productId], references: [id])
+  customer      Customer? @relation(fields: [customerId], references: [id])
 }

@@ -1,6 +1,7 @@
 "use client";
-
 import React, { useEffect, useState } from "react";
+import CreatableSelect from "react-select/creatable";
+import { formatDate } from "@/lib/utils";
 
 export default function InvoiceBuilder() {
   const [customers, setCustomers] = useState([]);
@@ -8,8 +9,9 @@ export default function InvoiceBuilder() {
   const [items, setItems] = useState([]);
 
   const [invoice, setInvoice] = useState({
-    invoiceNumber: "PE-" + Date.now(), // temporary — replace with settings later
+    invoiceNumber: "EST-1000",
     customerId: "",
+    customerPhone: "",
     date: new Date().toISOString().substring(0, 10),
     discount: 0,
 
@@ -31,8 +33,33 @@ export default function InvoiceBuilder() {
   const loadMaster = async () => {
     const c = await fetch("/api/customers").then((r) => r.json());
     const p = await fetch("/api/products").then((r) => r.json());
-    setCustomers(c);
+    
+    // Map customers for React Select
+    const mappedCustomers = c.map(cust => ({
+        ...cust,
+        label: cust.name,
+        value: cust.id
+    }));
+    
+    setCustomers(mappedCustomers);
     setProducts(p);
+
+    // Fetch next invoice number
+    const res = await fetch("/api/invoices/latest-number");
+    const { latestInvoiceNumber } = await res.json();
+    if (latestInvoiceNumber) {
+        // Handle EST- prefix and increment
+        const match = latestInvoiceNumber.match(/^(EST-)?(\d+)$/);
+        if (match) {
+            const nextNum = parseInt(match[2], 10) + 1;
+            setInvoice(prev => ({ ...prev, invoiceNumber: `EST-${nextNum}` }));
+        } else {
+            // Fallback if format is unexpected
+            setInvoice(prev => ({ ...prev, invoiceNumber: "EST-1000" }));
+        }
+    } else {
+        setInvoice(prev => ({ ...prev, invoiceNumber: "EST-1000" }));
+    }
   };
 
   useEffect(() => {
@@ -113,7 +140,7 @@ export default function InvoiceBuilder() {
   // Submit Invoice
   const saveInvoice = async () => {
     if (!invoice.customerId) {
-      alert("Select customer");
+      alert("Select or create customer");
       return;
     }
     if (items.length === 0) {
@@ -121,8 +148,22 @@ export default function InvoiceBuilder() {
       return;
     }
 
+    let currentCustomerId = invoice.customerId;
+
+    // Create customer if it's a new name
+    if (isNaN(currentCustomerId)) {
+      const res = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: currentCustomerId, phone: invoice.customerPhone }),
+      });
+      const newCustomer = await res.json();
+      currentCustomerId = newCustomer.id;
+    }
+
     const payload = {
       ...invoice,
+      customerId: currentCustomerId,
       items,
       subtotal: totals.subtotal,
       discount: Number(invoice.discount),
@@ -179,21 +220,45 @@ export default function InvoiceBuilder() {
             />
           </div>
 
-          <div>
-            <label>Customer</label>
-            <select
-              value={invoice.customerId}
+          <div style={{ flex: 2 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Customer</label>
+            <CreatableSelect
+              isClearable
+              value={customers.find((c) => c.id === invoice.customerId)}
+              options={customers}
+              onChange={(opt) => {
+                setInvoice({
+                  ...invoice,
+                  customerId: opt?.value,
+                  customerPhone: opt?.phone || "",
+                });
+              }}
+              styles={{
+                control: (base) => ({
+                    ...base,
+                    minHeight: 38,
+                    borderRadius: 6
+                })
+              }}
+            />
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Phone Number (Optional)</label>
+            <input
+              type="text"
+              placeholder="Enter phone..."
+              value={invoice.customerPhone}
               onChange={(e) =>
-                setInvoice({ ...invoice, customerId: Number(e.target.value) })
+                setInvoice({ ...invoice, customerPhone: e.target.value })
               }
-            >
-              <option value="">Select Customer</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: 6,
+                border: "1px solid #cbd5e1"
+              }}
+            />
           </div>
         </div>
       </div>
