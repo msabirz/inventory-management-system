@@ -172,8 +172,8 @@ function ProductModuleContent({
     return list.filter((p) => {
       const matchCategory = filters.categoryId ? p.categoryId === Number(filters.categoryId) : true;
       const matchSearch = filters.search
-        ? p.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-          p.sku.toLowerCase().includes(filters.search.toLowerCase())
+        ? (p.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
+           p.sku?.toLowerCase().includes(filters.search.toLowerCase()))
         : true;
       return matchCategory && matchSearch;
     });
