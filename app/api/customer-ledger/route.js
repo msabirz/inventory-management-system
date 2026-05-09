@@ -12,15 +12,10 @@ export async function POST(req) {
     const fromDate = from ? new Date(from) : null;
     const toDate = to ? new Date(to) : null;
 
-    /* -------------------------------------------------
-       STEP A — OPENING BALANCE
-       Sum of creditAmount BEFORE from date
-    ------------------------------------------------- */
-
     let openingBalance = 0;
 
     if (fromDate) {
-      const opening = await prisma.sale.aggregate({
+      const salesOpening = await prisma.sale.aggregate({
         _sum: { creditAmount: true },
         where: {
           creditAmount: { gt: 0 },
@@ -29,75 +24,110 @@ export async function POST(req) {
         },
       });
 
-      openingBalance = opening._sum.creditAmount || 0;
+      const paymentsOpening = await prisma.customerPayment.aggregate({
+        _sum: { amount: true },
+        where: {
+          date: { lt: fromDate },
+          ...(customerId && { customerId }),
+        },
+      });
+
+      openingBalance = (salesOpening._sum.creditAmount || 0) - (paymentsOpening._sum.amount || 0);
     }
 
     /* -------------------------------------------------
-       STEP B — CREDIT SALES IN RANGE
+       STEP B — TRANSACTIONS IN RANGE
     ------------------------------------------------- */
+    const dateRange = fromDate || toDate
+      ? {
+          date: {
+            ...(fromDate && { gte: fromDate }),
+            ...(toDate && { lte: toDate }),
+          },
+        }
+      : {};
 
-    const dateFilter = {
-      ...(fromDate && { gte: fromDate }),
-      ...(toDate && { lte: toDate }),
-    };
-const dateRange =
-  fromDate || toDate
-    ? {
-        date: {
-          ...(fromDate && { gte: fromDate }),
-          ...(toDate && { lte: toDate }),
+    const [sales, payments] = await Promise.all([
+      prisma.sale.findMany({
+        where: {
+          creditAmount: { gt: 0 },
+          ...(customerId && { customerId }),
+          ...dateRange,
         },
-      }
-    : {};
-    const sales = await prisma.sale.findMany({
-      where: {
-        creditAmount: { gt: 0 },
-        ...(customerId && { customerId }),
-        ...dateRange,
-      },
-      include: {
-        customer: { select: { name: true } },
-         product: {
-        select: {
-          name: true,
+        include: {
+          customer: { select: { name: true } },
+          product: { select: { name: true } },
         },
-      },
-      },
-     
-      orderBy: { date: "asc" },
-    });
+        orderBy: { date: "asc" },
+      }),
+      prisma.customerPayment.findMany({
+        where: {
+          ...(customerId && { customerId }),
+          ...dateRange,
+        },
+        include: {
+          customer: { select: { name: true } },
+        },
+        orderBy: { date: "asc" },
+      }),
+    ]);
 
     /* -------------------------------------------------
-       STEP C — NORMALISE TO LEDGER ROWS
+       STEP C — NORMALIZE AND SORT
     ------------------------------------------------- */
+    const allTransactions = [
+      ...sales.map((s) => ({
+        id: `sale-${s.id}`,
+        date: s.date,
+        type: "SALE",
+        customerName: s.customer?.name || "Walk-in",
+        description: `Sale: ${s.product?.name || "Product"} (Bill: ${s.billNumber || "-"})`,
+        billAmount: Number(s.netAmount),
+        paidAmount: Number(s.paidAmount),
+        credit: Number(s.creditAmount),
+        debit: 0,
+        paymentMode: s.paymentMode,
+        paymentRef: s.paymentRef,
+        item: {
+          productName: s.product?.name || "",
+          quantity: s.quantity,
+          rate: s.rate,
+          lineTotal: s.netAmount,
+        },
+      })),
+      ...payments.map((p) => ({
+        id: `pay-${p.id}`,
+        date: p.date,
+        type: "PAYMENT",
+        customerName: p.customer?.name || "Customer",
+        description: p.remarks || "Repayment",
+        billAmount: 0,
+        paidAmount: Number(p.amount),
+        credit: 0,
+        debit: Number(p.amount),
+        paymentMode: p.paymentMode,
+        paymentRef: p.paymentRef,
+        item: null,
+      })),
+    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+    /* -------------------------------------------------
+       STEP D — CALCULATE RUNNING BALANCE
+    ------------------------------------------------- */
     let balance = openingBalance;
+    const rows = allTransactions.map((t) => {
+      balance += t.credit - t.debit;
+      return {
+        ...t,
+        date: new Date(t.date).toISOString().slice(0, 10),
+        balance,
+      };
+    });
 
-    const rows = sales.map((s) => {
-  balance += s.creditAmount;
-
-  return {
-    id: s.id,
-    date: s.date.toISOString().slice(0, 10),
-    customerName: s.customer?.name || "Walk-in",
-    ref: "NA",
-
-    // amounts
-    billAmount: Number(s.netAmount),
-    paidAmount: Number(s.paidAmount),
-    debit: Number(s.creditAmount),
-    credit: 0,
-    balance,
-
-    // item details (for expand)
-    item: {
-      productName: s.product?.name || "",
-      quantity: s.quantity,
-      rate: s.rate,
-      lineTotal: s.netAmount,
-    },
-  };
-});
+    return NextResponse.json({
+      openingBalance,
+      rows,
+    });
 
     return NextResponse.json({
       openingBalance,

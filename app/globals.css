@@ -91,7 +91,7 @@ button:hover {
 }
 
 /* Inputs & selects */
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select,
 textarea {
     padding: 8px;

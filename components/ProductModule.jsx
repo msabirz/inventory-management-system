@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function ProductModule() {
   const [list, setList] = useState([]);
@@ -44,6 +45,7 @@ export default function ProductModule() {
         name: item.name || "",
         sku: item.sku || "",
         price: item.price ?? 0,
+        sellingPrice: item.sellingPrice ?? 0,
         quantity: item.quantity ?? 0,
         description: item.description || "",
         categoryId: item.categoryId ?? "",
@@ -116,15 +118,109 @@ export default function ProductModule() {
   };
 
   return (
+    <Suspense fallback={<div>Loading search...</div>}>
+      <ProductModuleContent
+        list={list}
+        loading={loading}
+        categories={categories}
+        modal={modal}
+        selected={selected}
+        form={form}
+        setForm={setForm}
+        open={open}
+        close={close}
+        createItem={createItem}
+        updateItem={updateItem}
+        deleteItem={deleteItem}
+      />
+    </Suspense>
+  );
+}
+
+function ProductModuleContent({
+  list,
+  loading,
+  categories,
+  modal,
+  selected,
+  form,
+  setForm,
+  open,
+  close,
+  createItem,
+  updateItem,
+  deleteItem,
+}) {
+  const searchParams = useSearchParams();
+  const productId = searchParams.get("id");
+
+  const [filters, setFilters] = useState({
+    categoryId: "",
+    search: "",
+  });
+
+  useEffect(() => {
+    if (productId && !loading && list.length > 0) {
+      const product = list.find((p) => String(p.id) === String(productId));
+      if (product) {
+        open("edit", product);
+      }
+    }
+  }, [productId, loading, list]);
+
+  const filteredProducts = useMemo(() => {
+    return list.filter((p) => {
+      const matchCategory = filters.categoryId ? p.categoryId === Number(filters.categoryId) : true;
+      const matchSearch = filters.search
+        ? (p.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
+           p.sku?.toLowerCase().includes(filters.search.toLowerCase()))
+        : true;
+      return matchCategory && matchSearch;
+    });
+  }, [list, filters]);
+
+  return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ fontSize: 22, marginBottom: 15 }}>Products</h1>
 
-      <button
-        onClick={() => open("add")}
-        style={{ padding: "8px 12px", marginBottom: 15 }}
-      >
-        Add Product
-      </button>
+      {/* Filter Options */}
+      <div style={{ display: "flex", gap: 15, marginBottom: 20, alignItems: "center" }}>
+        <div style={{ flex: 1 }}>
+          <input
+            placeholder="Search by name or SKU..."
+            value={filters.search}
+            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            style={{
+              padding: "10px 12px",
+              width: "100%",
+              borderRadius: 6,
+              border: "1px solid #cbd5e1",
+              fontSize: 14,
+            }}
+          />
+        </div>
+        <div>
+          <select
+            value={filters.categoryId}
+            onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}
+            style={{
+              padding: "10px 12px",
+              minWidth: 180,
+              borderRadius: 6,
+              border: "1px solid #cbd5e1",
+              fontSize: 14,
+              background: "#fff",
+            }}
+          >
+            <option value="">All Categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {loading ? (
         <p>Loading...</p>
@@ -148,7 +244,7 @@ export default function ProductModule() {
           </thead>
 
           <tbody>
-            {list.map((p) => (
+            {filteredProducts.map((p) => (
               <tr key={p.id}>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   {p.name}
@@ -182,6 +278,13 @@ export default function ProductModule() {
                 </td>
               </tr>
             ))}
+            {filteredProducts.length === 0 && (
+              <tr>
+                <td colSpan="8" style={{ padding: 20, textAlign: "center", color: "#666" }}>
+                  No products found matching the criteria.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       )}
@@ -195,6 +298,7 @@ export default function ProductModule() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            zIndex: 100,
           }}
         >
           <div

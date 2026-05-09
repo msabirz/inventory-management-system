@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDate } from "@/lib/utils";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
@@ -34,7 +35,7 @@ export default function DashboardPage() {
         <h2>Quick Actions</h2>
 
         <div style={{ display: "flex", gap: 15, marginTop: 15 }}>
-           <QuickLink href="/purchases" label="Create Purchase" />
+          <QuickLink href="/purchases" label="Create Purchase" />
           <QuickLink href="/sales" label="Create Sale" />
           <QuickLink href="/invoices/create" label="Create Quotation" />
           <QuickLink href="/products" label="Manage Products" />
@@ -56,7 +57,7 @@ export default function DashboardPage() {
         >
           <thead>
             <tr>
-              <th style={th}>Invoice No</th>
+              <th style={th}>EST No</th>
               <th style={th}>Customer</th>
               <th style={th}>Amount</th>
               <th style={th}>Date</th>
@@ -70,9 +71,7 @@ export default function DashboardPage() {
                 <td style={td}>{inv.customer?.name || "-"}</td>
                 <td style={td}>₹{inv.total}</td>
                 <td style={td}>
-                  {inv.date
-                    ? new Date(inv.date).toLocaleDateString()
-                    : "-"}
+                  {formatDate(inv.date)}
                 </td>
               </tr>
             ))}

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { formatDate } from "@/lib/utils";
 
 /**
  * Printable Invoice Page (A4 + Thermal)
@@ -94,7 +95,7 @@ export default function InvoicePrintPage({ params }) {
             <div style={{ textAlign: "right" }}>
               <h3>Invoice</h3>
               <div><strong>No:</strong> {invoice.invoiceNumber}</div>
-              <div><strong>Date:</strong> {invoice.date ? new Date(invoice.date).toLocaleDateString() : "-"}</div>
+              <div><strong>Date:</strong> {formatDate(invoice.date)}</div>
               <div><strong>Customer:</strong> {invoice.customer?.name || "Walk-in"}</div>
             </div>
           </div>

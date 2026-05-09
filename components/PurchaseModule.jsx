@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { formatDate } from "@/lib/utils";
 
 export default function PurchaseModule() {
   const [list, setList] = useState([]);
@@ -175,7 +176,7 @@ export default function PurchaseModule() {
                   {p.totalAmount}
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
-                  {new Date(p.date).toLocaleDateString()}
+                  {formatDate(p.date)}
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   <button

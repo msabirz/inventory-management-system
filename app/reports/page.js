@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatDate } from "@/lib/utils";
 
 export default function ReportsPage() {
   const [type, setType] = useState("sales");
@@ -209,7 +210,7 @@ export default function ReportsPage() {
             <tbody>
               {data.map((row) => (
                 <tr key={row.id}>
-                  <td style={td}>{new Date(row.date).toLocaleDateString()}</td>
+                  <td style={td}>{formatDate(row.date)}</td>
                   <td style={td}>{row.product?.name}</td>
                   <td style={td}>
                     {row.customer?.name || row.supplier?.name}

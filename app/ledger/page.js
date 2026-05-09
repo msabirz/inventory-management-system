@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import { formatDate } from "@/lib/utils";
 
 export default function CustomerLedgerPage() {
   const [from, setFrom] = useState("");
@@ -105,146 +106,124 @@ export default function CustomerLedgerPage() {
 
         {!loading && data && (
           <>
-            {/* Opening Balance */}
-            <div style={openingRow}>
-              <strong>Opening Balance</strong>
-              <span
-                style={{
-                  color: data.openingBalance < 0 ? "#dc2626" : "#16a34a",
-                  fontWeight: 700,
-                }}
-              >
-                ₹ {format(data.openingBalance)}
-              </span>
-            </div>
+            {/* Summary Cards */}
+            {(() => {
+              const totalCredit = data.rows.reduce((acc, r) => acc + (r.credit || 0), 0);
+              const totalDebit = data.rows.reduce((acc, r) => acc + (r.debit || 0), 0);
+              const currentBalance = data.openingBalance + totalCredit - totalDebit;
+
+              return (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 20 }}>
+                  <div style={{ background: "#f8f9fa", padding: 16, borderRadius: 10, border: "1px solid #e5e7eb" }}>
+                    <p style={{ fontSize: 12, color: "#6b7280", margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Opening Balance</p>
+                    <h2 style={{ margin: "8px 0 0 0", color: "#374151" }}>₹ {format(data.openingBalance)}</h2>
+                  </div>
+                  <div style={{ background: "#fff1f2", padding: 16, borderRadius: 10, border: "1px solid #fecdd3" }}>
+                    <p style={{ fontSize: 12, color: "#e11d48", margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Total Credit (+)</p>
+                    <h2 style={{ margin: "8px 0 0 0", color: "#9f1239" }}>₹ {format(totalCredit)}</h2>
+                  </div>
+                  <div style={{ background: "#f0fdf4", padding: 16, borderRadius: 10, border: "1px solid #bbf7d0" }}>
+                    <p style={{ fontSize: 12, color: "#16a34a", margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Total Repaid (-)</p>
+                    <h2 style={{ margin: "8px 0 0 0", color: "#14532d" }}>₹ {format(totalDebit)}</h2>
+                  </div>
+                  <div style={{ background: currentBalance > 0 ? "#fffbeb" : "#f0fdf4", padding: 16, borderRadius: 10, border: "1px solid " + (currentBalance > 0 ? "#fef3c7" : "#bbf7d0") }}>
+                    <p style={{ fontSize: 12, color: currentBalance > 0 ? "#d97706" : "#16a34a", margin: 0, fontWeight: 600, textTransform: "uppercase" }}>Net Outstanding</p>
+                    <h2 style={{ margin: "8px 0 0 0", color: currentBalance > 0 ? "#92400e" : "#14532d" }}>₹ {format(currentBalance)}</h2>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Ledger Table */}
-            <div style={{ overflowX: "auto" }}>
+            <div style={{ background: "white", borderRadius: 10, border: "1px solid #e5e7eb", overflow: "hidden" }}>
               <table style={table}>
                 <thead>
-                  <tr>
-                    <th style={th}>Date</th>
-                    <th style={th}>Customer</th>
-                    {/* <th style={th}>Reference</th> */}
-                    <th>Bill Amount</th>
-                    <th>Paid</th>
-                    {/* <th style={thRight}>Debit</th> */}
-                    <th style={thRight}>Credit</th>
-                    <th style={{ ...thRight, position: "relative" }}>
-  Balance{" "}
-  <span
-    style={{
-      cursor: "help",
-      color: "#6b7280",
-      fontWeight: "normal",
-      marginLeft: 4,
-    }}
-    onMouseEnter={(e) => {
-  const tip = document.getElementById("balance-tooltip");
-  const rect = e.target.getBoundingClientRect();
-
-  const tooltipWidth = tip.offsetWidth || 260;
-  const tooltipHeight = tip.offsetHeight || 40;
-  const padding = 8;
-
-  let left = rect.right + padding;
-  let top = rect.top - tooltipHeight - padding;
-
-  // 🔒 Prevent overflow on right
-  if (left + tooltipWidth > window.innerWidth) {
-    left = rect.left - tooltipWidth - padding;
-  }
-
-  // 🔒 Prevent overflow on top
-  if (top < padding) {
-    top = rect.bottom + padding;
-  }
-
-  tip.style.left = `${left}px`;
-  tip.style.top = `${top}px`;
-  tip.style.opacity = 1;
-  tip.style.visibility = "visible";
-}}
-    onMouseLeave={() => {
-      const tip = document.getElementById("balance-tooltip");
-      tip.style.opacity = 0;
-      tip.style.visibility = "hidden";
-    }}
-  >
-    ⓘ
-  </span>
-</th>
-                    <th style={th}></th>
+                  <tr style={{ background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
+                    <th style={{ ...th, width: 100 }}>Date</th>
+                    <th style={{ ...th, width: 140 }}>Customer</th>
+                    <th style={th}>Transaction Details</th>
+                    <th style={{ ...th, width: 120 }}>Mode/Ref</th>
+                    <th style={thRight}>Credit (+)</th>
+                    <th style={thRight}>Debit (-)</th>
+                    <th style={thRight}>Balance</th>
+                    <th style={{ ...th, width: 50 }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.rows.map((r, idx) => (
-                    <Fragment key={idx}>
-                      <tr>
-                        <td style={td}>{r.date}</td>
-                        <td style={td}>{r.customerName}</td>
-                        {/* <td style={td}>{r.ref}</td> */}
-                        <td>₹ {format(r.billAmount)}</td>
-                        <td>₹ {format(r.paidAmount)}</td>
-                        <td style={tdRight}>
-                          {r.debit ? `₹ ${format(r.debit)}` : "-"}
-                        </td>
-                        {/* <td style={tdRight}>
-                          {r.credit ? `₹ ${format(r.credit)}` : "-"}
-                        </td> */}
-                        <td
-                          style={{
-                            ...tdRight,
-                            fontWeight: 600,
-                            color: r.balance < 0 ? "#dc2626" : "#16a34a",
-                          }}
-                        >
-                          ₹ {format(r.balance)}
-                        </td>
-                        <td style={td}>
-                          <button
-                            onClick={() =>
-                              setExpandedRow(expandedRow === r.id ? null : r.id)
-                            }
-                            style={expandBtn}
-                          >
-                            {expandedRow === r.id ? "−" : "+"}
-                          </button>
-                        </td>
-                      </tr>
-                      {expandedRow === r.id && (
-  <tr>
-    <td colSpan={8} style={expandRow}>
-      <strong>Item details</strong>
-
-      <table style={{ width: "100%", marginTop: 6 }}>
-        <thead>
-          <tr>
-            <th style={miniTh}>Product</th>
-            <th style={miniTh}>Qty</th>
-            <th style={miniTh}>Rate</th>
-            <th style={miniTh}>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style={miniTd}>{r.item.productName}</td>
-            <td style={miniTd}>{r.item.quantity}</td>
-            <td style={miniTd}>₹ {r.item.rate}</td>
-            <td style={miniTd}>₹ {r.item.lineTotal}</td>
-          </tr>
-        </tbody>
-      </table>
-    </td>
-  </tr>
-)}
-                    </Fragment>
-                  ))}
+                  {data.rows.map((r, idx) => {
+                    const isSale = r.type === "SALE";
+                    return (
+                      <Fragment key={idx}>
+                        <tr style={{ background: isSale ? "transparent" : "#f0fdf4", borderBottom: "1px solid #f1f5f9" }}>
+                          <td style={td}>{formatDate(r.date)}</td>
+                          <td style={{ ...td, fontWeight: 500 }}>{r.customerName}</td>
+                          <td style={td}>
+                            <div style={{ fontWeight: 500 }}>{r.description}</div>
+                            {isSale && (
+                              <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>
+                                Net: ₹{format(r.billAmount)} | Paid: ₹{format(r.paidAmount)}
+                              </div>
+                            )}
+                          </td>
+                          <td style={td}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: "#374151" }}>{r.paymentMode || "-"}</div>
+                            <div style={{ fontSize: 11, color: "#6b7280" }}>{r.paymentRef || "-"}</div>
+                          </td>
+                          <td style={{ ...tdRight, color: "#dc2626", fontWeight: 600 }}>
+                            {r.credit > 0 ? `+ ₹${format(r.credit)}` : "-"}
+                          </td>
+                          <td style={{ ...tdRight, color: "#16a34a", fontWeight: 600 }}>
+                            {r.debit > 0 ? `- ₹${format(r.debit)}` : "-"}
+                          </td>
+                          <td style={{ ...tdRight, fontWeight: 700, color: r.balance > 0 ? "#dc2626" : "#16a34a" }}>
+                            ₹ {format(r.balance)}
+                          </td>
+                          <td style={td}>
+                            {isSale && (
+                              <button
+                                onClick={() => setExpandedRow(expandedRow === r.id ? null : r.id)}
+                                style={expandBtn}
+                              >
+                                {expandedRow === r.id ? "−" : "+"}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                        {expandedRow === r.id && isSale && (
+                          <tr>
+                            <td colSpan={7} style={expandRow}>
+                              <div style={{ padding: "8px 20px" }}>
+                                <strong style={{ fontSize: 14 }}>Items Details:</strong>
+                                <table style={{ width: "100%", marginTop: 8, borderCollapse: "collapse" }}>
+                                  <thead>
+                                    <tr>
+                                      <th style={{ ...miniTh, paddingLeft: 0 }}>Product Name</th>
+                                      <th style={miniTh}>Quantity</th>
+                                      <th style={miniTh}>Rate</th>
+                                      <th style={{ ...miniTh, textAlign: "right" }}>Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td style={{ ...miniTd, paddingLeft: 0 }}>{r.item.productName}</td>
+                                      <td style={miniTd}>{r.item.quantity}</td>
+                                      <td style={miniTd}>₹ {format(r.item.rate)}</td>
+                                      <td style={{ ...miniTd, textAlign: "right", fontWeight: 500 }}>₹ {format(r.item.lineTotal)}</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                   
                   {data.rows.length === 0 && (
                     <tr>
-                      <td colSpan={6} style={{ padding: 12, color: "#6b7280" }}>
-                        No ledger entries
+                      <td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>
+                        <p style={{ margin: 0, fontSize: 16 }}>No ledger entries found for the selected criteria.</p>
                       </td>
                     </tr>
                   )}

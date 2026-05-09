@@ -36,6 +36,8 @@ export async function PUT(req, { params }) {
       netAmount,
       remarks,
       date,
+      billNumber,
+      customerPhone,
     } = body;
 
     // ---- DATE ----
@@ -84,8 +86,18 @@ export async function PUT(req, { params }) {
 
         remarks: remarks || "",
         date: isoDate,
+        billNumber: billNumber || null,
       },
     });
+
+    // ---- UPDATE CUSTOMER PHONE ----
+    const custId = customerId ? Number(customerId) : updated.customerId;
+    if (custId && customerPhone) {
+      await prisma.customer.update({
+        where: { id: Number(custId) },
+        data: { phone: customerPhone },
+      });
+    }
 
     // ---- STOCK ADJUSTMENT (UNCHANGED) ----
     if (newProductId !== oldProductId) {
