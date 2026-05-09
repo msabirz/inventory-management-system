@@ -66,7 +66,7 @@ export async function GET() {
 
     // Recent sales
     const recentSales = await prisma.sale.findMany({
-      include: { product: true, customer: true },
+      include: { items: { include: { product: true } }, customer: true },
       orderBy: { id: "desc" },
       take: 5,
     });

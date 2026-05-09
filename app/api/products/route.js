@@ -28,6 +28,7 @@ export async function POST(request) {
         quantity: Number(data.quantity),
         description: data.description,
         categoryId: Number(data.categoryId),
+        unit: data.unit,
       }
     });
 

@@ -14,13 +14,16 @@ export async function GET() {
       lowStockCount,
       todaysSales,
       todaysPurchases,
-      recentInvoices
+      recentInvoices,
+      allTimeSales,
+      allTimePurchases,
+      pendingCredits
     ] = await Promise.all([
       prisma.product.count(),
       prisma.product.count({
         where: {
           quantity: {
-            lte: prisma.product.fields.lowStockThreshold,
+            lte: 5, // Default threshold
           },
         },
       }),
@@ -49,6 +52,21 @@ export async function GET() {
           customer: true,
         },
       }),
+
+      // All time sales
+      prisma.sale.aggregate({
+        _sum: { totalAmount: true }
+      }),
+
+      // All time purchases
+      prisma.purchase.aggregate({
+        _sum: { totalAmount: true }
+      }),
+
+      // Pending credits (Outstanding)
+      prisma.sale.aggregate({
+        _sum: { creditAmount: true }
+      })
     ]);
 
     return NextResponse.json({
@@ -56,6 +74,9 @@ export async function GET() {
       lowStockCount,
       todaysSales: todaysSales._sum.totalAmount || 0,
       todaysPurchases: todaysPurchases._sum.totalAmount || 0,
+      allTimeSales: allTimeSales._sum.totalAmount || 0,
+      allTimePurchases: allTimePurchases._sum.totalAmount || 0,
+      pendingCredits: pendingCredits._sum.creditAmount || 0,
       recentInvoices,
     });
   } catch (error) {

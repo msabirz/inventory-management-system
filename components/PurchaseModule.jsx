@@ -19,6 +19,8 @@ export default function PurchaseModule() {
     totalAmount: 0,
     remarks: "",
     date: "",
+    unit: "unit",
+    productDescription: "",
   });
 
   const API = "/api/purchases";
@@ -80,6 +82,8 @@ export default function PurchaseModule() {
         totalAmount: 0,
         remarks: "",
         date: new Date().toISOString().substring(0, 10),
+        unit: "unit",
+        productDescription: "",
       });
     }
   };
@@ -100,6 +104,8 @@ export default function PurchaseModule() {
         quantity: Number(form.quantity),
         pricePerUnit: Number(form.pricePerUnit),
         totalAmount: Number(form.totalAmount),
+        remarks: form.remarks,
+        description: form.productDescription,
       }),
     });
 
@@ -116,6 +122,7 @@ export default function PurchaseModule() {
         quantity: Number(form.quantity),
         pricePerUnit: Number(form.pricePerUnit),
         totalAmount: Number(form.totalAmount),
+        remarks: form.remarks,
       }),
     });
 
@@ -153,6 +160,7 @@ export default function PurchaseModule() {
                 Price/Unit
               </th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Total</th>
+              <th style={{ padding: 8, border: "1px solid #ddd" }}>Remark</th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Date</th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Actions</th>
             </tr>
@@ -174,6 +182,9 @@ export default function PurchaseModule() {
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   {p.totalAmount}
+                </td>
+                <td style={{ padding: 8, border: "1px solid #ddd" }}>
+                  {p.remarks}
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   {formatDate(p.date)}
@@ -220,7 +231,7 @@ export default function PurchaseModule() {
                   value={form.productId}
                   onChange={(e) => {
                     const product = list.find(
-                      (p) => p.product.id === Number(e.target.value)
+                      (p) => p.product.id === Number(e.target.value),
                     );
                     setForm({
                       ...form,
@@ -318,6 +329,35 @@ export default function PurchaseModule() {
                     setForm({ ...form, sellingPrice: e.target.value })
                   }
                   style={{ padding: 8, width: "100%", marginBottom: 10 }}
+                />
+
+                <input
+                  type="text"
+                  placeholder="Unit (e.g. kg, grams)"
+                  value={form.unit}
+                  onChange={(e) =>
+                    setForm({ ...form, unit: e.target.value })
+                  }
+                  style={{
+                    display: form?.productId === 0 ? "block" : "none",
+                    padding: 8,
+                    width: "100%",
+                    marginBottom: 10,
+                  }}
+                />
+
+                <textarea
+                  placeholder="Product Description (optional)"
+                  value={form.productDescription}
+                  onChange={(e) =>
+                    setForm({ ...form, productDescription: e.target.value })
+                  }
+                  style={{
+                    display: form?.productId === 0 ? "block" : "none",
+                    padding: 8,
+                    width: "100%",
+                    marginBottom: 10,
+                  }}
                 />
 
                 <input

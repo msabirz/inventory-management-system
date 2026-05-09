@@ -46,6 +46,8 @@ export async function POST(request) {
             ? Number(data.sellingPrice)
             : 0,
           categoryId:Number(data.categoryId),
+          unit: data.unit,
+          description: data.description,
         },
       });
       data.productId = newProduct.id;
@@ -61,12 +63,13 @@ export async function POST(request) {
     console.log("data",data)
     const created = await prisma.purchase.create({
       data: {
-        date: isoDate, // ✔ fixed
-        productId: Number(data.productId),
-        supplierId: data.supplierId ? Number(data.supplierId) : null,
-        quantity: Number(data.quantity),
-        pricePerUnit: Number(data.pricePerUnit),
-        totalAmount: Number(data.quantity) * Number(data.pricePerUnit),
+      date: isoDate, // ✔ fixed
+      productId: Number(data.productId),
+      supplierId: data.supplierId ? Number(data.supplierId) : null,
+      quantity: Number(data.quantity),
+      pricePerUnit: Number(data.pricePerUnit),
+      totalAmount: Number(data.quantity) * Number(data.pricePerUnit),
+      remarks: data.remarks || null,
       },
     });
 

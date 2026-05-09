@@ -56,7 +56,11 @@ export async function POST(req) {
         },
         include: {
           customer: { select: { name: true } },
-          product: { select: { name: true } },
+          items: {
+            include: {
+              product: { select: { name: true } }
+            }
+          }
         },
         orderBy: { date: "asc" },
       }),
@@ -76,25 +80,28 @@ export async function POST(req) {
        STEP C — NORMALIZE AND SORT
     ------------------------------------------------- */
     const allTransactions = [
-      ...sales.map((s) => ({
-        id: `sale-${s.id}`,
-        date: s.date,
-        type: "SALE",
-        customerName: s.customer?.name || "Walk-in",
-        description: `Sale: ${s.product?.name || "Product"} (Bill: ${s.billNumber || "-"})`,
-        billAmount: Number(s.netAmount),
-        paidAmount: Number(s.paidAmount),
-        credit: Number(s.creditAmount),
-        debit: 0,
-        paymentMode: s.paymentMode,
-        paymentRef: s.paymentRef,
-        item: {
-          productName: s.product?.name || "",
-          quantity: s.quantity,
-          rate: s.rate,
-          lineTotal: s.netAmount,
-        },
-      })),
+      ...sales.map((s) => {
+        const itemNames = s.items.map(it => it.product?.name || "Product").join(", ");
+        return {
+          id: `sale-${s.id}`,
+          date: s.date,
+          type: "SALE",
+          customerName: s.customer?.name || "Walk-in",
+          description: `Sale: ${itemNames} (Bill: ${s.billNumber || "-"})`,
+          billAmount: Number(s.netAmount),
+          paidAmount: Number(s.paidAmount),
+          credit: Number(s.creditAmount),
+          debit: 0,
+          paymentMode: s.paymentMode,
+          paymentRef: s.paymentRef,
+          items: s.items.map(it => ({
+            productName: it.product?.name || "",
+            quantity: it.quantity,
+            rate: it.rate,
+            lineTotal: it.totalAmount,
+          })),
+        };
+      }),
       ...payments.map((p) => ({
         id: `pay-${p.id}`,
         date: p.date,
@@ -107,7 +114,7 @@ export async function POST(req) {
         debit: Number(p.amount),
         paymentMode: p.paymentMode,
         paymentRef: p.paymentRef,
-        item: null,
+        items: null,
       })),
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
