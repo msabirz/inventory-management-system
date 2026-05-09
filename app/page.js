@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
@@ -23,11 +23,15 @@ export default function DashboardPage() {
       <h1 style={{ fontSize: 28, marginBottom: 20 }}>Dashboard</h1>
 
       {/* TOP CARDS */}
-      <div style={{ display: "flex", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
         <Card title="Total Products" value={summary.totalProducts} color="#2563eb" />
         <Card title="Low Stock" value={summary.lowStockCount} color="red" />
-        <Card title="Today's Sales" value={`₹${summary.todaysSales}`} color="#16a34a" />
-        <Card title="Today's Purchases" value={`₹${summary.todaysPurchases}`} color="#9333ea" />
+        <Card title="Today's Sales" value={`₹${formatCurrency(summary.todaysSales)}`} color="#16a34a" />
+        <Card title="Today's Purchases" value={`₹${formatCurrency(summary.todaysPurchases)}`} color="#9333ea" />
+        
+        <Card title="All Time Sales" value={`₹${formatCurrency(summary.allTimeSales)}`} color="#0ea5e9" />
+        <Card title="All Time Purchases" value={`₹${formatCurrency(summary.allTimePurchases)}`} color="#f59e0b" />
+        <Card title="Pending Credits" value={`₹${formatCurrency(summary.pendingCredits)}`} color="#ef4444" />
       </div>
 
       {/* QUICK LINKS */}
@@ -69,7 +73,7 @@ export default function DashboardPage() {
               <tr key={inv.id}>
                 <td style={td}>{inv.invoiceNumber}</td>
                 <td style={td}>{inv.customer?.name || "-"}</td>
-                <td style={td}>₹{inv.total}</td>
+                <td style={td}>₹{formatCurrency(inv.total)}</td>
                 <td style={td}>
                   {formatDate(inv.date)}
                 </td>

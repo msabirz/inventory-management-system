@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/utils";
 import CreatableSelect from "react-select/creatable";
 
 /* ---------------- SORT HELPER ---------------- */
@@ -12,9 +12,11 @@ export default function SalesModule() {
   const [list, setList] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
 
   /* ---------------- SORT STATE ---------------- */
   const [sortKey, setSortKey] = useState(null);
@@ -30,10 +32,7 @@ export default function SalesModule() {
   });
 
   const sortableCols = [
-    "product.name",
     "customer.name",
-    "quantity",
-    "rate",
     "totalAmount",
     "paidAmount",
     "creditAmount",
@@ -56,7 +55,9 @@ export default function SalesModule() {
     // 1. Filter
     let result = list.filter((s) => {
       const matchCustomer = filters.customerId ? s.customerId === Number(filters.customerId) : true;
-      const matchProduct = filters.productId ? s.productId === Number(filters.productId) : true;
+      const matchProduct = filters.productId 
+        ? s.items?.some(item => item.productId === Number(filters.productId)) 
+        : true;
       const matchBill = filters.billNumber
         ? s.billNumber?.toLowerCase().includes(filters.billNumber.toLowerCase())
         : true;
@@ -99,10 +100,8 @@ export default function SalesModule() {
 
   /* ---------------- FORM ---------------- */
   const [form, setForm] = useState({
-    productId: "",
     customerId: "",
-    quantity: 0,
-    rate: 0,
+    items: [{ productId: "", quantity: 1, rate: 0, totalAmount: 0 }],
     discount: 0,
     paidAmount: 0,
     creditAmount: 0,
@@ -112,10 +111,12 @@ export default function SalesModule() {
     date: "",
     paymentMode: "CASH",
     paymentRef: "",
+    billNumber: "",
+    customerPhone: "",
+    newProductModal: null, // index of the item being configured
   });
 
   const [errors, setErrors] = useState({
-    rateWarning: "",
     stockError: "",
   });
 
@@ -127,6 +128,7 @@ export default function SalesModule() {
     const s = await fetch(API).then((r) => r.json());
     const p = await fetch("/api/products").then((r) => r.json());
     const c = await fetch("/api/customers").then((r) => r.json());
+    const cats = await fetch("/api/categories").then((r) => r.json());
     c.map((cust) => {
       cust.label = cust.name;
       cust.value = cust.id;
@@ -135,6 +137,7 @@ export default function SalesModule() {
     setList(s);
     setProducts(p);
     setCustomers(c);
+    setCategories(cats);
     setLoading(false);
   };
 
@@ -144,53 +147,59 @@ export default function SalesModule() {
 
   /* ---------------- CALCULATIONS ---------------- */
   useEffect(() => {
-    const qty = Number(form.quantity);
-    const rate = Number(form.rate);
+    const itemsTotal = form.items.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
     const discount = Number(form.discount || 0);
     const paid = Number(form.paidAmount || 0);
 
-    const total = qty * rate;
-    const net = Math.max(total - discount, 0);
-    const safePaid = Math.min(paid, net);
-    const credit = net - safePaid;
+    const net = Math.max(itemsTotal - discount, 0);
+    const credit = net - paid;
 
     setForm((prev) => ({
       ...prev,
-      totalAmount: total,
+      totalAmount: itemsTotal,
       netAmount: net,
-      paidAmount: safePaid,
       creditAmount: credit,
     }));
-  }, [form.quantity, form.rate, form.discount, form.paidAmount]);
+  }, [form.items, form.discount, form.paidAmount]);
 
-  /* ---------------- PRODUCT AUTO RATE ---------------- */
-  useEffect(() => {
-    if (!form.productId) return;
-    const product = products.find((p) => p.id === Number(form.productId));
-    if (product) {
-      setForm((prev) => ({ ...prev, rate: product.sellingPrice }));
+  /* ---------------- ITEM UPDATES ---------------- */
+  const updateItem = (index, field, value) => {
+    const newItems = [...form.items];
+    const item = { ...newItems[index], [field]: value };
+
+    if (field === "productId" && value === "0") {
+      setForm({ ...form, newProductModal: index });
+      return;
     }
-  }, [form.productId, products]);
 
-  /* ---------------- VALIDATION ---------------- */
-  const currentProduct = useMemo(
-    () => products.find((p) => p.id === Number(form.productId)),
-    [products, form.productId]
-  );
-
-  useEffect(() => {
-    let w = { rateWarning: "", stockError: "" };
-
-    if (currentProduct) {
-      if (Number(form.rate) < Number(currentProduct.price)) {
-        w.rateWarning = `Selling below cost price (₹${currentProduct.price})`;
-      }
-      if (Number(form.quantity) > Number(currentProduct.quantity)) {
-        w.stockError = `Only ${currentProduct.quantity} qty available`;
+    if (field === "productId") {
+      const product = products.find(p => p.id === Number(value));
+      if (product) {
+        item.rate = product.sellingPrice;
       }
     }
-    setErrors(w);
-  }, [form.rate, form.quantity, currentProduct]);
+
+    if (field === "productId" || field === "quantity" || field === "rate") {
+      item.totalAmount = Number(item.quantity || 0) * Number(item.rate || 0);
+    }
+
+    newItems[index] = item;
+    setForm({ ...form, items: newItems });
+  };
+
+  const addItem = () => {
+    setForm({
+      ...form,
+      items: [...form.items, { productId: "", quantity: 1, rate: 0, totalAmount: 0 }]
+    });
+  };
+
+  const removeItem = (index) => {
+    if (form.items.length > 1) {
+      const newItems = form.items.filter((_, i) => i !== index);
+      setForm({ ...form, items: newItems });
+    }
+  };
 
   /* ---------------- MODAL ---------------- */
   const open = (type, item = null) => {
@@ -199,10 +208,13 @@ export default function SalesModule() {
 
     if (item) {
       setForm({
-        productId: item.productId,
         customerId: item.customerId || "",
-        quantity: item.quantity,
-        rate: item.rate,
+        items: item.items.map(it => ({
+          productId: it.productId,
+          quantity: it.quantity,
+          rate: it.rate,
+          totalAmount: it.totalAmount
+        })),
         discount: item.discount || 0,
         paidAmount: item.paidAmount || 0,
         creditAmount: item.creditAmount || 0,
@@ -214,6 +226,7 @@ export default function SalesModule() {
         customerPhone: item.customer?.phone || "",
         paymentMode: item.paymentMode || "CASH",
         paymentRef: item.paymentRef || "",
+        newProductModal: null,
       });
     } else {
       // For "Add", suggested bill number
@@ -238,10 +251,8 @@ export default function SalesModule() {
       fetchNextBill();
 
       setForm({
-        productId: "",
         customerId: "",
-        quantity: 0,
-        rate: 0,
+        items: [{ productId: "", quantity: 1, rate: 0, totalAmount: 0 }],
         discount: 0,
         paidAmount: 0,
         creditAmount: 0,
@@ -253,6 +264,7 @@ export default function SalesModule() {
         customerPhone: "",
         paymentMode: "CASH",
         paymentRef: "",
+        newProductModal: null,
       });
     }
   };
@@ -260,27 +272,29 @@ export default function SalesModule() {
   const close = () => {
     setModal(null);
     setSelected(null);
-    setErrors({ rateWarning: "", stockError: "" });
+    setErrors({ stockError: "" });
   };
 
   /* ---------------- ACTIONS ---------------- */
   const save = async () => {
-    if (isNaN(form.customerId)) {
+    let customerId = form.customerId;
+    if (isNaN(customerId)) {
       const res = await fetch("/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: form.customerId, phone: form.customerPhone }),
       });
       const newCustomer = await res.json();
-      form.customerId = newCustomer.id;
+      customerId = newCustomer.id;
     }
+    
     const method = modal === "add" ? "POST" : "PUT";
     const url = modal === "add" ? API : `${API}/${selected.id}`;
 
     await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, customerId }),
     });
 
     close();
@@ -294,15 +308,10 @@ export default function SalesModule() {
   };
 
   const saveDisabled =
-    errors.stockError ||
-    errors.rateWarning ||
-    !form.productId ||
+    form.items.some(it => !it.productId || it.quantity <= 0) ||
     !form.customerId ||
-    form.quantity <= 0 ||
-    form.rate <= 0 ||
     form.discount < 0 ||
     form.paidAmount < 0 ||
-    form.paidAmount > form.netAmount ||
     !form.date ||
     !form.billNumber;
 
@@ -439,43 +448,98 @@ export default function SalesModule() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#f3f3f3" }}>
-              <SortTh label="Product" col="product.name" />
+              <th style={{ width: 40 }}></th>
+              <SortTh label="Bill No" col="billNumber" />
+              <SortTh label="Date" col="date" />
               <SortTh label="Customer" col="customer.name" />
-              <SortTh label="Qty" col="quantity" />
-              <SortTh label="Rate" col="rate" />
               <SortTh label="Total" col="totalAmount" />
+              <SortTh label="Discount" col="discount" />
+              <SortTh label="Net" col="netAmount" />
               <SortTh label="Paid" col="paidAmount" />
               <SortTh label="Credit" col="creditAmount" />
-              <SortTh label="Discount" col="discount" />
-              <SortTh label="Date" col="date" />
-              <SortTh label="Bill No" col="billNumber" />
               <th style={{ padding: 8 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredAndSortedList.map((s) => (
-              <tr key={s.id}>
-                <td style={tdStyle}>{s.product?.name}</td>
-                <td style={tdStyle}>{s.customer?.name}</td>
-                <td style={tdStyle}>{s.quantity}</td>
-                <td style={tdStyle}>₹{s.rate}</td>
-                <td style={tdStyle}>₹{s.totalAmount}</td>
-                <td style={tdStyle}>₹{s.paidAmount || 0}</td>
-                <td style={{ ...tdStyle, color: s.creditAmount > 0 ? "crimson" : "green" }}>
-                  ₹{s.creditAmount || 0}
-                </td>
-                <td style={tdStyle}>₹{s.discount || 0}</td>
-                <td style={tdStyle}>{formatDate(s.date)}</td>
-                <td style={tdStyle}>{s.billNumber || "-"}</td>
-                <td style={tdStyle}>
-                  <button onClick={() => open("edit", s)} style={{ marginRight: 6 }}>Edit</button>
-                  <button onClick={() => open("delete", s)} style={{ background: "red", border: "1px solid #cbd5e1" }}>Delete</button>
-                </td>
-              </tr>
-            ))}
+            {filteredAndSortedList.map((s) => {
+              const isExpanded = expandedId === s.id;
+              return (
+                <React.Fragment key={s.id}>
+                  <tr 
+                    onClick={() => setExpandedId(isExpanded ? null : s.id)}
+                    style={{ cursor: "pointer", background: isExpanded ? "#f8fafc" : "transparent" }}
+                  >
+                    <td style={{ textAlign: "center", padding: 10 }}>
+                      <span style={{ 
+                        display: "inline-block", 
+                        transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+                        transition: "transform 0.2s",
+                        fontSize: 12,
+                        color: "#64748b"
+                      }}>▶</span>
+                    </td>
+                    <td style={tdStyle}>{s.billNumber || "-"}</td>
+                    <td style={tdStyle}>{formatDate(s.date)}</td>
+                    <td style={tdStyle}>{s.customer?.name}</td>
+                    <td style={tdStyle}>₹{formatCurrency(s.totalAmount)}</td>
+                    <td style={tdStyle}>₹{formatCurrency(s.discount || 0)}</td>
+                    <td style={tdStyle}>₹{formatCurrency(s.netAmount)}</td>
+                    <td style={tdStyle}>₹{formatCurrency(s.paidAmount || 0)}</td>
+                    <td style={{ ...tdStyle, color: s.creditAmount > 0 ? "crimson" : "green" }}>
+                      ₹{formatCurrency(s.creditAmount || 0)}
+                    </td>
+                    <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => open("edit", s)} style={{ marginRight: 6 }}>Edit</button>
+                      <button onClick={() => open("delete", s)} style={{ background: "red", color: "#fff", border: "none", padding: "4px 8px", borderRadius: 4, cursor: "pointer" }}>Delete</button>
+                    </td>
+                  </tr>
+                  
+                  {isExpanded && (
+                    <tr style={{ background: "#f8fafc" }}>
+                      <td colSpan="10" style={{ padding: "0 20px 20px 50px" }}>
+                        <div style={{ 
+                          background: "white", 
+                          borderRadius: 8, 
+                          border: "1px solid #e2e8f0", 
+                          padding: 15,
+                          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.05)"
+                        }}>
+                          <h4 style={{ fontSize: 13, marginBottom: 10, color: "#475569" }}>Purchased Products</h4>
+                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead>
+                              <tr style={{ borderBottom: "2px solid #f1f5f9" }}>
+                                <th style={subThStyle}>Product Name</th>
+                                <th style={subThStyle}>Qty</th>
+                                <th style={subThStyle}>Rate</th>
+                                <th style={subThStyle}>Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {s.items?.map((it) => (
+                                <tr key={it.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                  <td style={subTdStyle}>{it.product?.name}</td>
+                                  <td style={subTdStyle}>{it.quantity}</td>
+                                  <td style={subTdStyle}>₹{it.rate}</td>
+                                  <td style={subTdStyle}>₹{it.totalAmount}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {s.remarks && (
+                            <div style={{ marginTop: 15, fontSize: 13, color: "#64748b" }}>
+                              <strong>Remarks:</strong> {s.remarks}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
             {filteredAndSortedList.length === 0 && (
               <tr>
-                <td colSpan="11" style={{ padding: 30, textAlign: "center", color: "#64748b" }}>
+                <td colSpan="10" style={{ padding: 30, textAlign: "center", color: "#64748b" }}>
                   No sales found matching the current filters.
                 </td>
               </tr>
@@ -489,81 +553,140 @@ export default function SalesModule() {
       {/* MODAL */}
       {modal && (
         <div style={overlay}>
-          <div style={modalBox}>
+          <div style={{ ...modalBox, maxWidth: 800 }}>
             {(modal === "add" || modal === "edit") && (
               <>
                 <h2 style={modalTitle}>
                   {modal === "add" ? "Add Sale" : "Edit Sale"}
                 </h2>
-                {renderField(
-                  "Product",
-                  <select
-                    value={form.productId}
-                    onChange={(e) =>
-                      setForm({ ...form, productId: Number(e.target.value) })
-                    }
-                    style={fieldInputStyle}
-                  >
-                    <option value="">Select</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} - {p.quantity} in stock
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {renderField(
-                  "Customer",
-                  <CreatableSelect
-                    isClearable
-                    value={customers.find((c) => c.id === form.customerId)}
-                    options={customers}
-                    onChange={(opt) => {
-                      setForm({
-                        ...form,
-                        customerId: opt?.value,
-                        customerPhone: opt?.phone || "",
-                      });
-                    }}
-                  />
-                )}
-                {renderField(
-                  "Phone Number (Optional)",
-                  <input
-                    type="text"
-                    value={form.customerPhone}
-                    placeholder="Enter phone..."
-                    onChange={(e) =>
-                      setForm({ ...form, customerPhone: e.target.value })
-                    }
-                    style={fieldInputStyle}
-                  />
-                )}
+                
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 15 }}>
                   {renderField(
-                    "Quantity",
+                    "Customer",
+                    <CreatableSelect
+                      isClearable
+                      value={customers.find((c) => c.id === form.customerId) || (form.customerId ? { label: form.customerId, value: form.customerId } : null)}
+                      options={customers}
+                      onChange={(opt) => {
+                        setForm({
+                          ...form,
+                          customerId: opt?.value,
+                          customerPhone: opt?.phone || "",
+                        });
+                      }}
+                    />
+                  )}
+                  {renderField(
+                    "Date",
                     <input
-                      type="number"
-                      value={form.quantity}
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setForm({ ...form, date: e.target.value })}
+                      style={fieldInputStyle}
+                    />
+                  )}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 15 }}>
+                  {renderField(
+                    "Phone Number (Optional)",
+                    <input
+                      type="text"
+                      value={form.customerPhone}
+                      placeholder="Enter phone..."
                       onChange={(e) =>
-                        setForm({ ...form, quantity: Number(e.target.value) })
+                        setForm({ ...form, customerPhone: e.target.value })
                       }
                       style={fieldInputStyle}
                     />
                   )}
                   {renderField(
-                    "Rate",
+                    "Bill Number",
                     <input
-                      type="number"
-                      value={form.rate}
+                      type="text"
+                      value={form.billNumber}
+                      placeholder="Suggested automatically..."
                       onChange={(e) =>
-                        setForm({ ...form, rate: Number(e.target.value) })
+                        setForm({ ...form, billNumber: e.target.value })
                       }
                       style={fieldInputStyle}
                     />
                   )}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 15 }}>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: 14, fontWeight: 700, display: "block", marginBottom: 10 }}>Products</label>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={itemThStyle}>Product</th>
+                        <th style={itemThStyle}>Qty</th>
+                        <th style={itemThStyle}>Rate</th>
+                        <th style={itemThStyle}>Total</th>
+                        <th style={itemThStyle}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {form.items.map((item, index) => (
+                        <tr key={index}>
+                          <td style={itemTdStyle}>
+                            <select
+                              value={item.productId}
+                              onChange={(e) => updateItem(index, "productId", e.target.value)}
+                              style={itemInputStyle}
+                            >
+                              <option value="">Select</option>
+                              {/* <option value="0" style={{ fontWeight: "bold", color: "#2563eb" }}>+ Add New Product</option> */}
+                              {products
+                                .filter(p => !form.items.some((otherItem, i) => i !== index && Number(otherItem.productId) === p.id))
+                                .map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} ({p.quantity} in stock)
+                                </option>
+                              ))}
+                            </select>
+                            {item.isNew && (
+                              <div style={{ fontSize: 11, color: "#2563eb", marginTop: 4, cursor: "pointer" }} onClick={() => setForm({...form, newProductModal: index})}>
+                                Edit New Product: {item.name}
+                              </div>
+                            )}
+                          </td>
+                          <td style={itemTdStyle}>
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updateItem(index, "quantity", e.target.value)}
+                              style={itemInputStyle}
+                            />
+                          </td>
+                          <td style={itemTdStyle}>
+                            <input
+                              type="number"
+                              value={item.rate}
+                              onChange={(e) => updateItem(index, "rate", e.target.value)}
+                              style={itemInputStyle}
+                            />
+                          </td>
+                          <td style={itemTdStyle}>
+                            ₹{item.totalAmount}
+                          </td>
+                          <td style={itemTdStyle}>
+                            <button onClick={() => removeItem(index)} style={{ color: "red", border: "none", background: "none", cursor: "pointer", fontSize: 18 }}>×</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <button onClick={addItem} style={{ marginTop: 10, padding: "6px 12px", border: "1px solid #cbd5e1", borderRadius: 4, cursor: "pointer", fontSize: 13 }}>
+                    + Add Another Product
+                  </button>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 15, background: "#f8fafc", padding: 15, borderRadius: 8, marginBottom: 20 }}>
+                  {renderField(
+                    "Subtotal",
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>₹{form.totalAmount}</div>
+                  )}
                   {renderField(
                     "Discount",
                     <input
@@ -576,6 +699,13 @@ export default function SalesModule() {
                     />
                   )}
                   {renderField(
+                    "Net Amount",
+                    <div style={{ fontWeight: 700, fontSize: 16, color: "#2563eb" }}>₹{form.netAmount}</div>
+                  )}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 15 }}>
+                  {renderField(
                     "Paid Amount",
                     <input
                       type="number"
@@ -586,46 +716,24 @@ export default function SalesModule() {
                       style={fieldInputStyle}
                     />
                   )}
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 15 }}>
                   {renderField(
-                    "Credit (Auto)",
-                    <input readOnly value={form.creditAmount} style={{ ...fieldInputStyle, background: "#f8fafc" }} />
+                    "Credit Amount",
+                    <div style={{ fontWeight: 700, color: form.creditAmount > 0 ? "crimson" : "green" }}>₹{form.creditAmount}</div>
                   )}
                   {renderField(
-                    "Date",
-                    <input
-                      type="date"
-                      value={form.date}
-                      onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    "Payment Mode",
+                    <select
+                      value={form.paymentMode}
+                      onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}
                       style={fieldInputStyle}
-                    />
+                    >
+                      <option value="CASH">Cash</option>
+                      <option value="UPI">UPI</option>
+                      <option value="CHEQUE">Cheque</option>
+                    </select>
                   )}
                 </div>
-                {renderField(
-                  "Bill Number",
-                  <input
-                    type="text"
-                    value={form.billNumber}
-                    placeholder="Suggested automatically..."
-                    onChange={(e) =>
-                      setForm({ ...form, billNumber: e.target.value })
-                    }
-                    style={fieldInputStyle}
-                  />
-                )}
-                  {renderField(
-                  "Payment Mode",
-                  <select
-                    value={form.paymentMode}
-                    onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}
-                    style={fieldInputStyle}
-                  >
-                    <option value="CASH">Cash</option>
-                    <option value="UPI">UPI</option>
-                    <option value="CHEQUE">Cheque</option>
-                  </select>
-                )}
+
                 {renderField(
                   form.paymentMode === "CASH" ? "Payment Ref (e.g. Bill No)" : 
                   form.paymentMode === "UPI" ? "Transaction ID" : "Cheque Number",
@@ -637,6 +745,7 @@ export default function SalesModule() {
                     style={fieldInputStyle}
                   />
                 )}
+
                 {renderField(
                   "Remarks",
                   <textarea
@@ -647,6 +756,7 @@ export default function SalesModule() {
                     style={{ ...fieldInputStyle, height: 60 }}
                   />
                 )}
+
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                   <button onClick={close} style={{ padding: "8px 16px" }}>Cancel</button>
                   <button
@@ -654,37 +764,92 @@ export default function SalesModule() {
                     onClick={save}
                     style={{ padding: "8px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 4, cursor: saveDisabled ? "not-allowed" : "pointer" }}
                   >
-                    Save
+                    Save Sale
                   </button>
                 </div>
               </>
             )}
+            
+            {/* NEW PRODUCT MODAL */}
+            {typeof form.newProductModal === "number" && (
+              <div style={overlay}>
+                <div style={{ ...modalBox, maxWidth: 400 }}>
+                  <h3 style={modalTitle}>Configure New Product</h3>
+                  <div style={{ marginBottom: 15 }}>
+                    <label style={miniLabel}>Product Name</label>
+                    <input 
+                      style={fieldInputStyle}
+                      value={form.items[form.newProductModal]?.name || ""}
+                      onChange={(e) => updateItem(form.newProductModal, "name", e.target.value)}
+                      placeholder="Enter name..."
+                    />
+                  </div>
+                  <div style={{ marginBottom: 15 }}>
+                    <label style={miniLabel}>Unit</label>
+                    <input 
+                      style={fieldInputStyle}
+                      value={form.items[form.newProductModal]?.unit || "unit"}
+                      onChange={(e) => updateItem(form.newProductModal, "unit", e.target.value)}
+                      placeholder="kg, grams, etc."
+                    />
+                  </div>
+                  <div style={{ marginBottom: 15 }}>
+                    <label style={miniLabel}>Description</label>
+                    <textarea 
+                      style={{ ...fieldInputStyle, height: 60 }}
+                      value={form.items[form.newProductModal]?.description || ""}
+                      onChange={(e) => updateItem(form.newProductModal, "description", e.target.value)}
+                      placeholder="Optional description..."
+                    />
+                  </div>
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={miniLabel}>Category</label>
+                    <select 
+                      style={fieldInputStyle}
+                      value={form.items[form.newProductModal]?.categoryId || ""}
+                      onChange={(e) => updateItem(form.newProductModal, "categoryId", e.target.value)}
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                    <button 
+                      onClick={() => {
+                        const newItems = [...form.items];
+                        newItems[form.newProductModal].productId = ""; // reset
+                        setForm({ ...form, items: newItems, newProductModal: null });
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      style={{ background: "#2563eb", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 4 }}
+                      onClick={() => {
+                        const newItems = [...form.items];
+                        newItems[form.newProductModal].isNew = true;
+                        newItems[form.newProductModal].productId = "NEW"; // temporary marker
+                        setForm({ ...form, items: newItems, newProductModal: null });
+                      }}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {modal === "delete" && (
               <>
                 <h2 style={{ color: "crimson" }}>Delete Sale?</h2>
                 <p>
-                  Are you sure you want to delete sale of{" "}
-                  <strong>
-                    {selected?.product?.name} of worth Rs.
-                    {selected?.netAmount} for {selected?.customer?.name}
-                  </strong>
-                  ?
+                  Are you sure you want to delete bill <strong>{selected?.billNumber}</strong>?
                 </p>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: 10,
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                   <button onClick={close}>Cancel</button>
-                  <button
-                    onClick={deleteItem}
-                    style={{ background: "crimson", color: "#fff" }}
-                  >
-                    Delete
-                  </button>
+                  <button onClick={deleteItem} style={{ background: "crimson", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 4, cursor: "pointer" }}>Delete</button>
                 </div>
               </>
             )}
@@ -707,13 +872,7 @@ export default function SalesModule() {
           borderBottom: "2px solid #e2e8f0",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>{label}</span>
           <span style={{ fontSize: "10px" }}>
             {sortKey === col ? (sortDir === "asc" ? "▲" : "▼") : "▲▼"}
@@ -748,8 +907,7 @@ const modalBox = {
   background: "#fff",
   padding: 24,
   borderRadius: 12,
-  width: "100%",
-  maxWidth: 520,
+  width: "95%",
   maxHeight: "90vh",
   overflowY: "auto",
 };
@@ -792,4 +950,46 @@ const fieldInputStyle = {
   border: "1px solid #cbd5e1",
   fontSize: 14,
   outline: "none",
+};
+
+const itemThStyle = {
+  fontSize: 12,
+  textAlign: "left",
+  padding: "8px 4px",
+  borderBottom: "1px solid #e2e8f0"
+};
+
+const itemTdStyle = {
+  padding: "8px 4px",
+  borderBottom: "1px solid #f1f5f9"
+};
+
+const itemInputStyle = {
+  width: "100%",
+  padding: "6px 8px",
+  borderRadius: 4,
+  border: "1px solid #cbd5e1",
+  fontSize: 13
+};
+
+const subThStyle = {
+  fontSize: 12,
+  fontWeight: 600,
+  textAlign: "left",
+  padding: "8px 4px",
+  color: "#64748b"
+};
+
+const subTdStyle = {
+  fontSize: 13,
+  padding: "10px 4px",
+  color: "#334155"
+};
+
+const miniLabel = {
+  fontSize: 12,
+  fontWeight: 600,
+  color: "#64748b",
+  display: "block",
+  marginBottom: 4
 };

@@ -87,18 +87,21 @@ export async function POST(req) {
     // Sales rows
     const sales = await prisma.sale.findMany({
       where: { date: { gte: startDate, lte: endDate } },
-      include: { product: true },
+      include: { items: { include: { product: true } } },
     });
 
     for (const s of sales) {
       const k = keyOf(s.date);
       if (!map[k]) map[k] = { sales: 0, cogs: 0, expenses: 0 };
 
-      const q = safeNumber(s.quantity);
-      const r = safeNumber(s.rate);
+      for (const item of s.items) {
+        const q = safeNumber(item.quantity);
+        const r = safeNumber(item.rate);
+        const cp = safeNumber(item.product?.price);
 
-      map[k].sales += q * r;
-      map[k].cogs  += q * safeNumber(s.product?.price);
+        map[k].sales += q * r;
+        map[k].cogs  += q * cp;
+      }
     }
 
     // Expense rows

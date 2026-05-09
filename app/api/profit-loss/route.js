@@ -91,7 +91,7 @@ export async function POST(req) {
 
     const sales = await prisma.sale.findMany({
       where: { date: { gte: startDate, lte: endDate } },
-      include: { product: true },
+      include: { items: { include: { product: true } } },
     });
 
     const returns = await prisma.return.findMany({
@@ -104,13 +104,15 @@ export async function POST(req) {
     let normalProfit = 0;
 
     for (const s of sales) {
-      const qty = safeNumber(s.quantity);
-      const sp = safeNumber(s.rate);
-      const cp = safeNumber(s.product?.price);
+      for (const item of s.items) {
+        const qty = safeNumber(item.quantity);
+        const sp = safeNumber(item.rate);
+        const cp = safeNumber(item.product?.price);
 
-      revenue += qty * sp;
-      cogs += qty * cp;
-      normalProfit += (sp - cp) * qty;
+        revenue += qty * sp;
+        cogs += qty * cp;
+        normalProfit += (sp - cp) * qty;
+      }
     }
 
     let returnAmount = 0;

@@ -108,9 +108,9 @@ export default function CustomerLedgerPage() {
           <>
             {/* Summary Cards */}
             {(() => {
-              const totalCredit = data.rows.reduce((acc, r) => acc + (r.credit || 0), 0);
-              const totalDebit = data.rows.reduce((acc, r) => acc + (r.debit || 0), 0);
-              const currentBalance = data.openingBalance + totalCredit - totalDebit;
+              const totalCredit = data?.rows?.reduce((acc, r) => acc + (r.credit || 0), 0) || 0;
+              const totalDebit = data?.rows?.reduce((acc, r) => acc + (r.debit || 0), 0) || 0;
+              const currentBalance = (data?.openingBalance || 0) + totalCredit - totalDebit;
 
               return (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 20 }}>
@@ -150,7 +150,7 @@ export default function CustomerLedgerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.rows.map((r, idx) => {
+                  {(data?.rows || []).map((r, idx) => {
                     const isSale = r.type === "SALE";
                     return (
                       <Fragment key={idx}>
@@ -204,12 +204,14 @@ export default function CustomerLedgerPage() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    <tr>
-                                      <td style={{ ...miniTd, paddingLeft: 0 }}>{r.item.productName}</td>
-                                      <td style={miniTd}>{r.item.quantity}</td>
-                                      <td style={miniTd}>₹ {format(r.item.rate)}</td>
-                                      <td style={{ ...miniTd, textAlign: "right", fontWeight: 500 }}>₹ {format(r.item.lineTotal)}</td>
-                                    </tr>
+                                    {r.items?.map((it, i) => (
+                                      <tr key={i}>
+                                        <td style={{ ...miniTd, paddingLeft: 0 }}>{it.productName}</td>
+                                        <td style={miniTd}>{it.quantity}</td>
+                                        <td style={miniTd}>₹ {format(it.rate)}</td>
+                                        <td style={{ ...miniTd, textAlign: "right", fontWeight: 500 }}>₹ {format(it.lineTotal)}</td>
+                                      </tr>
+                                    ))}
                                   </tbody>
                                 </table>
                               </div>
@@ -220,7 +222,7 @@ export default function CustomerLedgerPage() {
                     );
                   })}
                   
-                  {data.rows.length === 0 && (
+                  {(!data?.rows || data.rows.length === 0) && (
                     <tr>
                       <td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>
                         <p style={{ margin: 0, fontSize: 16 }}>No ledger entries found for the selected criteria.</p>

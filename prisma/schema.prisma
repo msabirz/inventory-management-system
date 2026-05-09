@@ -51,12 +51,13 @@ model Product {
   quantity          Int               @default(0)
   description       String?
   categoryId        Int
+  unit              String?           @default("unit")
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   InvoiceItem       InvoiceItem[]
   category          Category          @relation(fields: [categoryId], references: [id])
   purchases         Purchase[]
-  sales             Sale[]
+  saleItems         SaleItem[]
   stockAdjustments  StockAdjustment[]
   returns           Return[]
 }
@@ -89,11 +90,7 @@ model Purchase {
 
 model Sale {
   id           Int       @id @default(autoincrement())
-  productId    Int
   customerId   Int?
-  quantity     Int
-  rate         Float
-  pricePerUnit Float     @default(0)
   totalAmount  Float     @default(0)
   discount     Float     @default(0)
   netAmount    Float     @default(0)
@@ -107,7 +104,19 @@ model Sale {
   paymentMode  String?
   paymentRef   String?
   customer     Customer? @relation(fields: [customerId], references: [id])
-  product      Product   @relation(fields: [productId], references: [id])
+  items        SaleItem[]
+}
+
+model SaleItem {
+  id           Int     @id @default(autoincrement())
+  saleId       Int
+  productId    Int
+  quantity     Int
+  rate         Float
+  pricePerUnit Float   @default(0)
+  totalAmount  Float   @default(0)
+  product      Product @relation(fields: [productId], references: [id])
+  sale         Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
 }
 
 model Invoice {

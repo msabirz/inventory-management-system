@@ -44,10 +44,7 @@ export async function DELETE(request, { params }) {
     // Adjust stock
     await prisma.product.update({
       where: { id: purchase.productId },
-      data: { quantity: newQty,categoryId: Number(data.categoryId),
-          sellingPrice: Number(data.sellingPrice),
-          price: Number(data.pricePerUnit), },
-      
+      data: { quantity: newQty },
     });
 
     // Delete purchase
@@ -111,6 +108,7 @@ export async function PUT(request, { params }) {
         quantity: newQty,
         pricePerUnit: Number(data.pricePerUnit),
         totalAmount: newQty * Number(data.pricePerUnit),
+        remarks: data.remarks || null,
       },
     });
 

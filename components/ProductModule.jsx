@@ -17,6 +17,7 @@ export default function ProductModule() {
     quantity: 0,
     description: "",
     categoryId: "",
+    unit: "unit",
   });
 
   const API = "/api/products";
@@ -49,6 +50,7 @@ export default function ProductModule() {
         quantity: item.quantity ?? 0,
         description: item.description || "",
         categoryId: item.categoryId ?? "",
+        unit: item.unit || "unit",
       });
     } else {
       // ADD
@@ -60,6 +62,7 @@ export default function ProductModule() {
         quantity: 0,
         description: "",
         categoryId: "",
+        unit: "unit",
       });
     }
   };
@@ -78,6 +81,7 @@ export default function ProductModule() {
       quantity: Number(form.quantity),
       description: form.description,
       categoryId: Number(form.categoryId),
+      unit: form.unit,
     };
 
     await fetch(API, {
@@ -99,6 +103,7 @@ export default function ProductModule() {
       sellingPrice: Number(form.sellingPrice),
       description: form.description,
       categoryId: Number(form.categoryId),
+      unit: form.unit,
     };
 
     await fetch(`${API}/${selected.id}`, {
@@ -170,10 +175,12 @@ function ProductModuleContent({
 
   const filteredProducts = useMemo(() => {
     return list.filter((p) => {
-      const matchCategory = filters.categoryId ? p.categoryId === Number(filters.categoryId) : true;
+      const matchCategory = filters.categoryId
+        ? p.categoryId === Number(filters.categoryId)
+        : true;
       const matchSearch = filters.search
-        ? (p.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-           p.sku?.toLowerCase().includes(filters.search.toLowerCase()))
+        ? p.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
+          p.sku?.toLowerCase().includes(filters.search.toLowerCase())
         : true;
       return matchCategory && matchSearch;
     });
@@ -184,7 +191,14 @@ function ProductModuleContent({
       <h1 style={{ fontSize: 22, marginBottom: 15 }}>Products</h1>
 
       {/* Filter Options */}
-      <div style={{ display: "flex", gap: 15, marginBottom: 20, alignItems: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 15,
+          marginBottom: 20,
+          alignItems: "center",
+        }}
+      >
         <div style={{ flex: 1 }}>
           <input
             placeholder="Search by name or SKU..."
@@ -202,7 +216,9 @@ function ProductModuleContent({
         <div>
           <select
             value={filters.categoryId}
-            onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}
+            onChange={(e) =>
+              setFilters({ ...filters, categoryId: e.target.value })
+            }
             style={{
               padding: "10px 12px",
               minWidth: 180,
@@ -239,6 +255,7 @@ function ProductModuleContent({
               <th style={{ padding: 8, border: "1px solid #ddd" }}>
                 Description
               </th>
+              <th style={{ padding: 8, border: "1px solid #ddd" }}>Unit</th>
               <th style={{ padding: 8, border: "1px solid #ddd" }}>Actions</th>
             </tr>
           </thead>
@@ -268,6 +285,9 @@ function ProductModuleContent({
                   {p.description}
                 </td>
                 <td style={{ padding: 8, border: "1px solid #ddd" }}>
+                  {p.unit}
+                </td>
+                <td style={{ padding: 8, border: "1px solid #ddd" }}>
                   <button
                     onClick={() => open("edit", p)}
                     style={{ marginRight: 10 }}
@@ -280,7 +300,10 @@ function ProductModuleContent({
             ))}
             {filteredProducts.length === 0 && (
               <tr>
-                <td colSpan="8" style={{ padding: 20, textAlign: "center", color: "#666" }}>
+                <td
+                  colSpan="8"
+                  style={{ padding: 20, textAlign: "center", color: "#666" }}
+                >
                   No products found matching the criteria.
                 </td>
               </tr>
@@ -376,6 +399,15 @@ function ProductModuleContent({
                   value={form.description}
                   onChange={(e) =>
                     setForm({ ...form, description: e.target.value })
+                  }
+                  style={{ padding: 8, width: "100%", marginBottom: 10 }}
+                />
+                
+                <input
+                  placeholder="Unit (e.g. kg, grams, meters)"
+                  value={form.unit}
+                  onChange={(e) =>
+                    setForm({ ...form, unit: e.target.value })
                   }
                   style={{ padding: 8, width: "100%", marginBottom: 10 }}
                 />
